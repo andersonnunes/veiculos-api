@@ -1,0 +1,41 @@
+# Ambiente de desenvolvimento local deste repositório, isolado do vendas-api.
+# Rodar a partir da raiz do repositório: docker compose -f infra/docker-compose.yml up --build
+#
+# Banco próprio (veiculos-db) — nenhuma conexão de código ainda (nasce junto do Épico 1, que
+# adiciona o CRUD de veículo); aqui só garante que o serviço e o banco sobem juntos desde já.
+name: veiculos-api
+
+services:
+  veiculos-api:
+    build:
+      context: ..
+      dockerfile: src/VeiculosApi/Dockerfile
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      # Credenciais de dev do próprio veiculos-db abaixo — ambiente local efêmero, não é
+      # segredo de produção.
+      - ConnectionStrings__VeiculosDb=Host=veiculos-db;Port=5432;Database=veiculos;Username=veiculos;Password=veiculos
+    ports:
+      - "5001:8080"
+    depends_on:
+      veiculos-db:
+        condition: service_healthy
+
+  veiculos-db:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_DB=veiculos
+      - POSTGRES_USER=veiculos
+      - POSTGRES_PASSWORD=veiculos
+    ports:
+      - "5433:5432"
+    volumes:
+      - veiculos-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U veiculos -d veiculos"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  veiculos-db-data:
