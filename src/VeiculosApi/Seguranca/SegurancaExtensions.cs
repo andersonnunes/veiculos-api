@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.Options;
+using VeiculosApi.Application.Keycloak;
 
 namespace VeiculosApi.Seguranca;
 
@@ -23,10 +24,6 @@ public static class SegurancaExtensions
                 politica.RequireRole("administrador", "vendedor"))
             .AddPolicy(PoliticasAutorizacao.ServicoVendasApi, politica =>
                 politica.RequireRole("servico").RequireClaim("azp", clienteChamador));
-
-        services.AddHttpClient("keycloak-token");
-        services.AddSingleton<TokenDeServico>();
-        services.AddTransient<ServicoAutenticadoHandler>();
 
         return services;
     }
