@@ -9,6 +9,11 @@ internal sealed class VeiculoConfiguration : IEntityTypeConfiguration<Veiculo>
     public void Configure(EntityTypeBuilder<Veiculo> builder)
     {
         builder.ToTable("veiculos");
+        builder.Property<uint>("Versao")
+            .HasColumnName("xmin")
+            .HasColumnType("xid")
+            .ValueGeneratedOnAddOrUpdate()
+            .IsConcurrencyToken();
 
         builder.HasKey(v => v.Id);
         builder.Property(v => v.Id).ValueGeneratedNever();

@@ -9,4 +9,8 @@ public interface IVeiculoRepositorio
     Task AdicionarAsync(Veiculo veiculo, CancellationToken cancellationToken);
 
     Task<Veiculo?> ObterPorIdAsync(Guid id, CancellationToken cancellationToken);
+
+    Task<Veiculo?> ObterParaAlteracaoAsync(Guid id, CancellationToken cancellationToken);
+
+    Task SalvarAlteracoesAsync(CancellationToken cancellationToken);
 }

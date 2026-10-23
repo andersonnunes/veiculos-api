@@ -26,25 +26,46 @@ public sealed partial class Veiculo
 
     public static Veiculo Cadastrar(Guid id, DadosVeiculo dados, int anoAtual, DateTimeOffset criadoEm)
     {
-        var normalizados = Normalizar(dados);
-        var erros = Validar(normalizados, anoAtual);
-        if (erros.Count > 0)
-            throw new ValidacaoVeiculoException(erros);
+        var edicao = Normalizar(new DadosEdicaoVeiculo(dados.Marca, dados.Modelo, dados.Ano, dados.Cor, dados.Preco));
+        var chassi = NormalizarChassi(dados.Chassi);
+        var placa = NormalizarPlaca(dados.Placa);
+
+        var erros = ValidarEditaveis(edicao, anoAtual);
+        ValidarChassi(erros, chassi);
+        ValidarPlaca(erros, placa);
+        LancarSeInvalido(erros);
 
         return new Veiculo
         {
             Id = id,
-            Marca = normalizados.Marca,
-            Modelo = normalizados.Modelo,
-            Ano = normalizados.Ano,
-            Cor = normalizados.Cor,
-            Preco = normalizados.Preco,
-            Chassi = normalizados.Chassi,
-            Placa = normalizados.Placa,
+            Marca = edicao.Marca,
+            Modelo = edicao.Modelo,
+            Ano = edicao.Ano,
+            Cor = edicao.Cor,
+            Preco = edicao.Preco,
+            Chassi = chassi,
+            Placa = placa,
             Status = StatusVeiculo.Disponivel,
             CriadoEm = criadoEm
         };
     }
+
+    public void Atualizar(DadosEdicaoVeiculo dados, int anoAtual)
+    {
+        if (Status == StatusVeiculo.Vendido)
+            throw new VeiculoVendidoException(Id);
+
+        var edicao = Normalizar(dados);
+        LancarSeInvalido(ValidarEditaveis(edicao, anoAtual));
+
+        Marca = edicao.Marca;
+        Modelo = edicao.Modelo;
+        Ano = edicao.Ano;
+        Cor = edicao.Cor;
+        Preco = edicao.Preco;
+    }
+
+    public void MarcarComoVendido() => Status = StatusVeiculo.Vendido;
 
     [GeneratedRegex("^[A-HJ-NPR-Z0-9]{17}$", RegexOptions.None, matchTimeoutMilliseconds: 100)]
     private static partial Regex RegexChassi();
@@ -52,16 +73,19 @@ public sealed partial class Veiculo
     [GeneratedRegex("^[A-Z0-9]{7}$", RegexOptions.None, matchTimeoutMilliseconds: 100)]
     private static partial Regex RegexPlaca();
 
-    private static DadosVeiculo Normalizar(DadosVeiculo dados) => new(
+    private static DadosEdicaoVeiculo Normalizar(DadosEdicaoVeiculo dados) => new(
         dados.Marca?.Trim() ?? string.Empty,
         dados.Modelo?.Trim() ?? string.Empty,
         dados.Ano,
         dados.Cor?.Trim() ?? string.Empty,
-        dados.Preco,
-        dados.Chassi?.Trim().ToUpperInvariant() ?? string.Empty,
-        string.IsNullOrWhiteSpace(dados.Placa) ? null : dados.Placa.Trim().ToUpperInvariant());
+        dados.Preco);
 
-    private static Dictionary<string, string[]> Validar(DadosVeiculo dados, int anoAtual)
+    private static string NormalizarChassi(string? chassi) => chassi?.Trim().ToUpperInvariant() ?? string.Empty;
+
+    private static string? NormalizarPlaca(string? placa) =>
+        string.IsNullOrWhiteSpace(placa) ? null : placa.Trim().ToUpperInvariant();
+
+    private static Dictionary<string, List<string>> ValidarEditaveis(DadosEdicaoVeiculo dados, int anoAtual)
     {
         var erros = new Dictionary<string, List<string>>();
 
@@ -70,10 +94,8 @@ public sealed partial class Veiculo
         ValidarAno(erros, dados.Ano, anoAtual);
         ValidarTextoObrigatorio(erros, "cor", dados.Cor, TamanhoMaximoCor, "Cor");
         ValidarPreco(erros, dados.Preco);
-        ValidarChassi(erros, dados.Chassi);
-        ValidarPlaca(erros, dados.Placa);
 
-        return erros.ToDictionary(par => par.Key, par => par.Value.ToArray());
+        return erros;
     }
 
     private static void ValidarTextoObrigatorio(
@@ -109,6 +131,12 @@ public sealed partial class Veiculo
     {
         if (placa is not null && !RegexPlaca().IsMatch(placa))
             Adicionar(erros, "placa", "Placa deve ter 7 caracteres alfanuméricos.");
+    }
+
+    private static void LancarSeInvalido(Dictionary<string, List<string>> erros)
+    {
+        if (erros.Count > 0)
+            throw new ValidacaoVeiculoException(erros.ToDictionary(par => par.Key, par => par.Value.ToArray()));
     }
 
     private static void Adicionar(Dictionary<string, List<string>> erros, string campo, string mensagem)

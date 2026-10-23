@@ -17,6 +17,14 @@ internal sealed class ExcecoesDeNegocioHandler : IExceptionHandler
                 title: "Veículo já cadastrado",
                 detail: $"Já existe um veículo com o mesmo {duplicado.Campo}.",
                 statusCode: StatusCodes.Status409Conflict),
+            VeiculoVendidoException => Results.Problem(
+                title: "Veículo vendido",
+                detail: "Veículo vendido não pode ser alterado.",
+                statusCode: StatusCodes.Status409Conflict),
+            VeiculoConflitoConcorrenciaException => Results.Problem(
+                title: "Conflito de alteração",
+                detail: "O veículo foi alterado por outra operação. Recarregue e tente novamente.",
+                statusCode: StatusCodes.Status409Conflict),
             _ => null
         };
 
