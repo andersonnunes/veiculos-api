@@ -1,8 +1,9 @@
+using VeiculosApi.Application.Keycloak;
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Options;
 
-namespace VeiculosApi.Seguranca;
+namespace VeiculosApi.Infrastructure.Keycloak;
 
 public sealed class TokenDeServico
 {
