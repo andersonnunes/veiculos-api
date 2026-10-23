@@ -19,6 +19,7 @@ builder.Services.AddSegurancaKeycloak(builder.Configuration);
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddScoped<CadastrarVeiculoCasoDeUso>();
 builder.Services.AddScoped<ObterVeiculoPorIdCasoDeUso>();
+builder.Services.AddScoped<AtualizarVeiculoCasoDeUso>();
 
 var app = builder.Build();
 
