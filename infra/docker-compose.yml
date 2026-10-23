@@ -39,6 +39,10 @@ services:
       - KC_DB_USERNAME=keycloak
       - KC_DB_PASSWORD=keycloak
       - KC_HOSTNAME=http://localhost:8180
+      # O emissor do token continua o público (localhost:8180), mas as URLs de backchannel
+      # (jwks_uri, token) seguem o host da requisição: a API, dentro da rede do compose, busca
+      # as chaves em keycloak:8080, que é alcançável de dentro do container.
+      - KC_HOSTNAME_BACKCHANNEL_DYNAMIC=true
     ports:
       - "8180:8080"
     volumes:
