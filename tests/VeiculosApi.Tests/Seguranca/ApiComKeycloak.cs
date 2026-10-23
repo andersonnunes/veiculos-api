@@ -2,19 +2,23 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
+using VeiculosApi.Infrastructure.Keycloak;
 using VeiculosApi.Seguranca;
+using VeiculosApi.Tests.Infraestrutura;
 
 namespace VeiculosApi.Tests.Seguranca;
 
-public sealed class ApiComKeycloak(KeycloakFixture keycloak, string clientId, string clientSecret)
+public sealed class ApiComKeycloak(KeycloakFixture keycloak, PostgresFixture postgres, string clientId, string clientSecret)
     : WebApplicationFactory<Program>
 {
-    public ApiComKeycloak(KeycloakFixture keycloak) : this(keycloak, "veiculos-api", "dev-veiculos-api-secret")
+    public ApiComKeycloak(KeycloakFixture keycloak, PostgresFixture postgres)
+        : this(keycloak, postgres, "veiculos-api", "dev-veiculos-api-secret")
     {
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        builder.UseSetting("ConnectionStrings:VeiculosDb", postgres.ConnectionString);
         builder.UseSetting("Keycloak:EmissorPublico", keycloak.EmissorRealm);
         builder.UseSetting("Keycloak:MetadataInterna", keycloak.MetadataRealm);
         builder.UseSetting("Keycloak:EndpointToken", keycloak.EndpointToken);
