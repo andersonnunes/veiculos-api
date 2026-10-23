@@ -59,11 +59,33 @@ curl -s -d grant_type=client_credentials -d client_id=vendas-api \
   http://localhost:8180/realms/revendax/protocol/openid-connect/token
 ```
 
+### Cadastro de veículo
+
+Requer token com papel `administrador` ou `vendedor` (ver acima). Sem token → `401`; com token sem
+o papel → `403`.
+
+```bash
+TOKEN=$(curl -s -d grant_type=password -d client_id=revendax-dev-cli \
+  -d username=vendedor-dev -d password=dev-vendedor \
+  http://localhost:8180/realms/revendax/protocol/openid-connect/token | jq -r .access_token)
+
+curl -i -X POST http://localhost:5001/veiculos \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"marca":"Fiat","modelo":"Argo","ano":2025,"cor":"Prata","preco":85000.00,"chassi":"9BWZZZ377VT004251"}'
+```
+
+- `201 Created` com o veículo (status `disponivel`) e `Location` para `GET /veiculos/{id}`.
+- `400` (ProblemDetails com `errors` por campo) para dados inválidos.
+- `409` quando chassi ou placa já estão cadastrados.
+
 ## Como testar
 
 ```bash
 dotnet test
 ```
+
+Os testes de integração sobem um Keycloak e um PostgreSQL reais via Testcontainers (é preciso
+Docker disponível).
 
 Com cobertura (mesmo gate usado no CI, mínimo 80% de linhas):
 
@@ -80,8 +102,12 @@ dotnet test tests/VeiculosApi.Tests/VeiculosApi.Tests.csproj -c Release \
 veiculos-api/
 ├── global.json              # pina o SDK do .NET
 ├── veiculos-api.slnx
-├── src/VeiculosApi/         # API (controllers, Program.cs, Dockerfile)
-├── tests/VeiculosApi.Tests/ # testes xUnit + WebApplicationFactory
+├── src/
+│   ├── VeiculosApi.Domain/         # entidades e invariantes (sem dependências externas)
+│   ├── VeiculosApi.Application/    # casos de uso e portas (IVeiculoRepositorio)
+│   ├── VeiculosApi.Infrastructure/ # EF Core/PostgreSQL, migrations, cliente Keycloak de saída
+│   └── VeiculosApi/                # API: controllers, autenticação JWT, Program.cs, Dockerfile
+├── tests/VeiculosApi.Tests/        # testes de domínio, aplicação e integração (xUnit)
 ├── infra/docker-compose.yml # serviço + Postgres próprio
 ├── docs/                    # modelagem de dados / arquitetura
 └── .github/workflows/ci.yml # build + lint + testes (cobertura ≥80%) + scan de imagem
