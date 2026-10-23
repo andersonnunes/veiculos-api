@@ -1,6 +1,6 @@
 using System.Net.Http.Headers;
 
-namespace VeiculosApi.Seguranca;
+namespace VeiculosApi.Infrastructure.Keycloak;
 
 public sealed class ServicoAutenticadoHandler(TokenDeServico tokens) : DelegatingHandler
 {

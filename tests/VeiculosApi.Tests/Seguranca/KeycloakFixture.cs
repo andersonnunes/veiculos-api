@@ -28,6 +28,7 @@ public sealed class KeycloakFixture : IAsyncLifetime
             .WithEnvironment("KC_BOOTSTRAP_ADMIN_PASSWORD", "admin")
             .WithEnvironment("KC_HOSTNAME_STRICT", "false")
             .WithBindMount(realm, "/opt/keycloak/data/import/realm-revendax.json", AccessMode.ReadOnly)
+            .WithReuse(true)
             .WithCommand("start-dev", "--import-realm")
             .WithWaitStrategy(Wait.ForUnixContainer().UntilHttpRequestIsSucceeded(requisicao =>
                 requisicao.ForPort(PortaInterna).ForPath("/realms/revendax")))
@@ -70,10 +71,4 @@ public sealed class KeycloakFixture : IAsyncLifetime
     }
 
     private sealed record RespostaToken([property: JsonPropertyName("access_token")] string AccessToken);
-}
-
-[CollectionDefinition(NomeColecao)]
-public sealed class KeycloakCollection : ICollectionFixture<KeycloakFixture>
-{
-    public const string NomeColecao = "keycloak";
 }

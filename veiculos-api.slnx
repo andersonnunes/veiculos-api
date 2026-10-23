@@ -1,5 +1,8 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/VeiculosApi.Application/VeiculosApi.Application.csproj" />
+    <Project Path="src/VeiculosApi.Domain/VeiculosApi.Domain.csproj" />
+    <Project Path="src/VeiculosApi.Infrastructure/VeiculosApi.Infrastructure.csproj" />
     <Project Path="src/VeiculosApi/VeiculosApi.csproj" />
   </Folder>
   <Folder Name="/tests/">
