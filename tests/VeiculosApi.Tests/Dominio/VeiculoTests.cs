@@ -98,6 +98,67 @@ public class VeiculoTests
         AssertErroNoCampo("placa", () => Criar(placa: "ABC12"));
     }
 
+    [Fact]
+    public void Atualizar_DadosValidos_AtualizaCamposEditaveis()
+    {
+        var veiculo = Criar();
+
+        veiculo.Atualizar(new DadosEdicaoVeiculo("Toyota", "Corolla", 2024, "Preto", 120000.00m), 2026);
+
+        Assert.Equal("Toyota", veiculo.Marca);
+        Assert.Equal("Corolla", veiculo.Modelo);
+        Assert.Equal(2024, veiculo.Ano);
+        Assert.Equal("Preto", veiculo.Cor);
+        Assert.Equal(120000.00m, veiculo.Preco);
+    }
+
+    [Fact]
+    public void Atualizar_PreservaIdentificadoresStatusECriacao()
+    {
+        var veiculo = Criar(placa: "ABC1D23");
+        var id = veiculo.Id;
+
+        veiculo.Atualizar(new DadosEdicaoVeiculo("Toyota", "Corolla", 2024, "Preto", 120000.00m), 2026);
+
+        Assert.Equal(id, veiculo.Id);
+        Assert.Equal(ChassiValido, veiculo.Chassi);
+        Assert.Equal("ABC1D23", veiculo.Placa);
+        Assert.Equal(StatusVeiculo.Disponivel, veiculo.Status);
+        Assert.Equal(Agora, veiculo.CriadoEm);
+    }
+
+    [Fact]
+    public void Atualizar_DadosInvalidos_RejeitaSemAlterarVeiculo()
+    {
+        var veiculo = Criar(preco: 85000.00m);
+
+        var excecao = Assert.Throws<ValidacaoVeiculoException>(
+            () => veiculo.Atualizar(new DadosEdicaoVeiculo("Fiat", "Argo", 2025, "Prata", 0m), 2026));
+
+        Assert.True(excecao.Erros.ContainsKey("preco"));
+        Assert.Equal(85000.00m, veiculo.Preco);
+    }
+
+    [Fact]
+    public void Atualizar_VeiculoVendido_LancaVeiculoVendido()
+    {
+        var veiculo = Criar();
+        veiculo.MarcarComoVendido();
+
+        Assert.Throws<VeiculoVendidoException>(
+            () => veiculo.Atualizar(new DadosEdicaoVeiculo("Toyota", "Corolla", 2024, "Preto", 120000.00m), 2026));
+    }
+
+    [Fact]
+    public void MarcarComoVendido_VeiculoDisponivel_MudaStatusParaVendido()
+    {
+        var veiculo = Criar();
+
+        veiculo.MarcarComoVendido();
+
+        Assert.Equal(StatusVeiculo.Vendido, veiculo.Status);
+    }
+
     private static void AssertErroNoCampo(string campo, Func<Veiculo> cadastro)
     {
         var excecao = Assert.Throws<ValidacaoVeiculoException>(cadastro);

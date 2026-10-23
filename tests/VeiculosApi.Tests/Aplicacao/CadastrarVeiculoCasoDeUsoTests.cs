@@ -78,5 +78,10 @@ public class CadastrarVeiculoCasoDeUsoTests
 
         public Task<Veiculo?> ObterPorIdAsync(Guid id, CancellationToken cancellationToken) =>
             Task.FromResult(Adicionados.FirstOrDefault(v => v.Id == id));
+
+        public Task<Veiculo?> ObterParaAlteracaoAsync(Guid id, CancellationToken cancellationToken) =>
+            Task.FromResult(Adicionados.FirstOrDefault(v => v.Id == id));
+
+        public Task SalvarAlteracoesAsync(CancellationToken cancellationToken) => Task.CompletedTask;
     }
 }
