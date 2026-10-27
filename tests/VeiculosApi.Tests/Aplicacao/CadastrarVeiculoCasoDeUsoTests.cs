@@ -12,7 +12,7 @@ public class CadastrarVeiculoCasoDeUsoTests
     public async Task ExecutarAsync_DadosValidos_PersisteVeiculoComIdEDataDoRelogio()
     {
         var repositorio = new RepositorioEmMemoria();
-        var casoDeUso = new CadastrarVeiculoCasoDeUso(repositorio, new FakeTimeProvider(Agora));
+        var casoDeUso = new CadastrarVeiculoCasoDeUso(repositorio, new SincronizacaoFalsa(), new FakeTimeProvider(Agora));
 
         var resultado = await casoDeUso.ExecutarAsync(Entrada(), CancellationToken.None);
 
@@ -27,7 +27,7 @@ public class CadastrarVeiculoCasoDeUsoTests
     public async Task ExecutarAsync_ChassiJaCadastrado_LancaDuplicadoSemPersistir()
     {
         var repositorio = new RepositorioEmMemoria { CampoDuplicado = "chassi" };
-        var casoDeUso = new CadastrarVeiculoCasoDeUso(repositorio, new FakeTimeProvider(Agora));
+        var casoDeUso = new CadastrarVeiculoCasoDeUso(repositorio, new SincronizacaoFalsa(), new FakeTimeProvider(Agora));
 
         var excecao = await Assert.ThrowsAsync<VeiculoDuplicadoException>(
             () => casoDeUso.ExecutarAsync(Entrada(), CancellationToken.None));
@@ -50,13 +50,26 @@ public class CadastrarVeiculoCasoDeUsoTests
     public async Task ObterPorIdAsync_VeiculoExistente_RetornaDados()
     {
         var repositorio = new RepositorioEmMemoria();
-        var cadastrado = await new CadastrarVeiculoCasoDeUso(repositorio, new FakeTimeProvider(Agora))
+        var cadastrado = await new CadastrarVeiculoCasoDeUso(repositorio, new SincronizacaoFalsa(), new FakeTimeProvider(Agora))
             .ExecutarAsync(Entrada(), CancellationToken.None);
 
         var resultado = await new ObterVeiculoPorIdCasoDeUso(repositorio)
             .ExecutarAsync(cadastrado.Id, CancellationToken.None);
 
         Assert.Equal(cadastrado, resultado);
+    }
+
+    [Fact]
+    public async Task ExecutarAsync_DadosValidos_SincronizaComVendasComOMesmoVeiculo()
+    {
+        var repositorio = new RepositorioEmMemoria();
+        var sincronizacao = new SincronizacaoFalsa();
+        var casoDeUso = new CadastrarVeiculoCasoDeUso(repositorio, sincronizacao, new FakeTimeProvider(Agora));
+
+        var resultado = await casoDeUso.ExecutarAsync(Entrada(), CancellationToken.None);
+
+        var enviado = Assert.Single(sincronizacao.Enviados);
+        Assert.Equal(resultado, enviado);
     }
 
     private static EntradaCadastrarVeiculo Entrada() =>

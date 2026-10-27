@@ -2,8 +2,10 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
+using VeiculosApi.Application.Veiculos;
 using VeiculosApi.Infrastructure.Keycloak;
 using VeiculosApi.Seguranca;
+using VeiculosApi.Tests.Aplicacao;
 using VeiculosApi.Tests.Infraestrutura;
 
 namespace VeiculosApi.Tests.Seguranca;
@@ -11,6 +13,8 @@ namespace VeiculosApi.Tests.Seguranca;
 public sealed class ApiComKeycloak(KeycloakFixture keycloak, PostgresFixture postgres, string clientId, string clientSecret)
     : WebApplicationFactory<Program>
 {
+    public SincronizacaoFalsa Sincronizacao { get; } = new();
+
     public ApiComKeycloak(KeycloakFixture keycloak, PostgresFixture postgres)
         : this(keycloak, postgres, "veiculos-api", "dev-veiculos-api-secret")
     {
@@ -27,6 +31,7 @@ public sealed class ApiComKeycloak(KeycloakFixture keycloak, PostgresFixture pos
 
         builder.ConfigureTestServices(servicos =>
         {
+            servicos.AddSingleton<IVendasSincronizacao>(Sincronizacao);
             servicos.AddControllers().AddApplicationPart(typeof(TestesSegurancaController).Assembly);
 
             servicos.AddHttpClient("teste-saida")
