@@ -62,6 +62,39 @@ public sealed class FotosVeiculoControllerTests(KeycloakFixture keycloak, Postgr
     }
 
     [Fact]
+    public async Task Adicionar_SemCampoArquivo_Retorna400ComErroNoCampoArquivo()
+    {
+        using var fabrica = new ApiComKeycloak(keycloak, postgres);
+        var cliente = await ClienteVendedorAsync(fabrica);
+        var veiculoId = await CadastrarVeiculoAsync(cliente);
+
+        var formulario = new MultipartFormDataContent { { new StringContent("sem foto"), "legenda" } };
+        var resposta = await cliente.PostAsync($"/veiculos/{veiculoId}/fotos", formulario);
+
+        Assert.Equal(HttpStatusCode.BadRequest, resposta.StatusCode);
+        var corpo = await resposta.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.True(corpo.GetProperty("errors").TryGetProperty("arquivo", out _));
+    }
+
+    [Fact]
+    public async Task Adicionar_UploadsConcorrentes_NuncaUltrapassamOLimite()
+    {
+        using var fabrica = new ApiComKeycloak(keycloak, postgres);
+        var cliente = await ClienteVendedorAsync(fabrica);
+        var veiculoId = await CadastrarVeiculoAsync(cliente);
+        var envios = Enumerable.Range(0, 12)
+            .Select(_ => cliente.PostAsync($"/veiculos/{veiculoId}/fotos", ConteudoMultipart(ArquivosDeImagem.Webp())))
+            .ToArray();
+
+        var respostas = await Task.WhenAll(envios);
+
+        Assert.Equal(10, respostas.Count(r => r.StatusCode == HttpStatusCode.Created));
+        Assert.Equal(2, respostas.Count(r => r.StatusCode == HttpStatusCode.UnprocessableEntity));
+        var lista = await (await cliente.GetAsync($"/veiculos/{veiculoId}/fotos")).Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(10, lista.GetArrayLength());
+    }
+
+    [Fact]
     public async Task Adicionar_VeiculoInexistente_Retorna404()
     {
         using var fabrica = new ApiComKeycloak(keycloak, postgres);

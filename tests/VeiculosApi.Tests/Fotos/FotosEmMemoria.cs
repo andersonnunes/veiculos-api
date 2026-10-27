@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using VeiculosApi.Application.Veiculos;
 using VeiculosApi.Application.Veiculos.Fotos;
 using VeiculosApi.Domain.Veiculos;
@@ -6,8 +7,8 @@ namespace VeiculosApi.Tests.Fotos;
 
 public sealed class ArmazenamentoFotosEmMemoria : IArmazenamentoFotos
 {
-    public Dictionary<string, (byte[] Conteudo, string ContentType)> Objetos { get; } = [];
-    public List<string> Removidos { get; } = [];
+    public ConcurrentDictionary<string, (byte[] Conteudo, string ContentType)> Objetos { get; } = new();
+    public ConcurrentBag<string> Removidos { get; } = [];
 
     public Task SalvarAsync(string chave, byte[] conteudo, string contentType, CancellationToken cancellationToken)
     {
@@ -20,7 +21,7 @@ public sealed class ArmazenamentoFotosEmMemoria : IArmazenamentoFotos
 
     public Task RemoverAsync(string chave, CancellationToken cancellationToken)
     {
-        Objetos.Remove(chave);
+        Objetos.TryRemove(chave, out _);
         Removidos.Add(chave);
         return Task.CompletedTask;
     }
@@ -31,16 +32,19 @@ public sealed class FotosRepositorioEmMemoria : IFotoVeiculoRepositorio
     public List<FotoVeiculo> Itens { get; } = [];
     public bool FalharAoAdicionar { get; init; }
 
-    public Task<int> ContarPorVeiculoAsync(Guid veiculoId, CancellationToken cancellationToken) =>
-        Task.FromResult(Itens.Count(f => f.VeiculoId == veiculoId));
-
-    public Task AdicionarAsync(FotoVeiculo foto, CancellationToken cancellationToken)
+    public Task<bool> AdicionarSeAbaixoDoLimiteAsync(FotoVeiculo foto, int limite, CancellationToken cancellationToken)
     {
         if (FalharAoAdicionar)
             throw new InvalidOperationException("Falha simulada ao persistir a foto.");
 
-        Itens.Add(foto);
-        return Task.CompletedTask;
+        lock (Itens)
+        {
+            if (Itens.Count(f => f.VeiculoId == foto.VeiculoId) >= limite)
+                return Task.FromResult(false);
+
+            Itens.Add(foto);
+            return Task.FromResult(true);
+        }
     }
 
     public Task<IReadOnlyList<FotoVeiculo>> ListarPorVeiculoAsync(Guid veiculoId, CancellationToken cancellationToken) =>

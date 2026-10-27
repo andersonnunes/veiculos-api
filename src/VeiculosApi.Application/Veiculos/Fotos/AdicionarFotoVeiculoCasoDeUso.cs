@@ -16,23 +16,27 @@ public sealed class AdicionarFotoVeiculoCasoDeUso(
         if (await veiculos.ObterPorIdAsync(veiculoId, cancellationToken) is null)
             return null;
 
-        if (await fotos.ContarPorVeiculoAsync(veiculoId, cancellationToken) >= MaximoFotosPorVeiculo)
-            throw new LimiteFotosExcedidoException(MaximoFotosPorVeiculo);
-
         var agora = relogio.GetUtcNow();
         var foto = FotoVeiculo.Criar(Guid.CreateVersion7(agora), veiculoId, conteudo, agora);
 
         await armazenamento.SalvarAsync(foto.ChaveArmazenamento, conteudo, foto.ContentType, cancellationToken);
 
+        bool adicionada;
         try
         {
-            await fotos.AdicionarAsync(foto, cancellationToken);
+            adicionada = await fotos.AdicionarSeAbaixoDoLimiteAsync(foto, MaximoFotosPorVeiculo, cancellationToken);
         }
         catch
         {
             // Sem metadados não há como referenciar o binário: desfaz a gravação no armazenamento.
             await armazenamento.RemoverAsync(foto.ChaveArmazenamento, CancellationToken.None);
             throw;
+        }
+
+        if (!adicionada)
+        {
+            await armazenamento.RemoverAsync(foto.ChaveArmazenamento, CancellationToken.None);
+            throw new LimiteFotosExcedidoException(MaximoFotosPorVeiculo);
         }
 
         return FotoVeiculoDto.De(foto);

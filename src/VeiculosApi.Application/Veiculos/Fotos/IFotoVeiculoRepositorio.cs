@@ -4,9 +4,11 @@ namespace VeiculosApi.Application.Veiculos.Fotos;
 
 public interface IFotoVeiculoRepositorio
 {
-    Task<int> ContarPorVeiculoAsync(Guid veiculoId, CancellationToken cancellationToken);
-
-    Task AdicionarAsync(FotoVeiculo foto, CancellationToken cancellationToken);
+    /// <summary>
+    /// Adiciona a foto somente se o veículo ainda tiver menos fotos que o limite. A verificação e a
+    /// gravação são atômicas: retorna false, sem gravar, quando o limite já foi atingido.
+    /// </summary>
+    Task<bool> AdicionarSeAbaixoDoLimiteAsync(FotoVeiculo foto, int limite, CancellationToken cancellationToken);
 
     Task<IReadOnlyList<FotoVeiculo>> ListarPorVeiculoAsync(Guid veiculoId, CancellationToken cancellationToken);
 
