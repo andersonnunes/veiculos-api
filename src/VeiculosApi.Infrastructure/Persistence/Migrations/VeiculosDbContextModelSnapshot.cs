@@ -22,6 +22,38 @@ namespace VeiculosApi.Infrastructure.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("VeiculosApi.Domain.Veiculos.FotoVeiculo", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ChaveArmazenamento")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTimeOffset>("CriadoEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("Tamanho")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid>("VeiculoId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("VeiculoId")
+                        .HasDatabaseName("ix_fotos_veiculo_veiculo_id");
+
+                    b.ToTable("fotos_veiculo", (string)null);
+                });
+
             modelBuilder.Entity("VeiculosApi.Domain.Veiculos.Veiculo", b =>
                 {
                     b.Property<Guid>("Id")
@@ -87,6 +119,15 @@ namespace VeiculosApi.Infrastructure.Persistence.Migrations
                         .HasFilter("\"Placa\" IS NOT NULL");
 
                     b.ToTable("veiculos", (string)null);
+                });
+
+            modelBuilder.Entity("VeiculosApi.Domain.Veiculos.FotoVeiculo", b =>
+                {
+                    b.HasOne("VeiculosApi.Domain.Veiculos.Veiculo", null)
+                        .WithMany()
+                        .HasForeignKey("VeiculoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 #pragma warning restore 612, 618
         }

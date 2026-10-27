@@ -3,9 +3,11 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using VeiculosApi.Application.Veiculos;
+using VeiculosApi.Application.Veiculos.Fotos;
 using VeiculosApi.Infrastructure.Keycloak;
 using VeiculosApi.Seguranca;
 using VeiculosApi.Tests.Aplicacao;
+using VeiculosApi.Tests.Fotos;
 using VeiculosApi.Tests.Infraestrutura;
 
 namespace VeiculosApi.Tests.Seguranca;
@@ -33,6 +35,11 @@ public sealed class ApiComKeycloak(KeycloakFixture keycloak, PostgresFixture pos
         {
             servicos.AddSingleton<IVendasSincronizacao>(Sincronizacao);
             servicos.AddControllers().AddApplicationPart(typeof(TestesSegurancaController).Assembly);
+
+            // Os testes de integração não dependem de MinIO: o armazenamento real é coberto em MinioArmazenamentoFotosTests.
+            var armazenamentoFotos = new ArmazenamentoFotosEmMemoria();
+            servicos.AddSingleton(armazenamentoFotos);
+            servicos.AddScoped<IArmazenamentoFotos>(_ => armazenamentoFotos);
 
             servicos.AddHttpClient("teste-saida")
                 .AddHttpMessageHandler<ServicoAutenticadoHandler>()

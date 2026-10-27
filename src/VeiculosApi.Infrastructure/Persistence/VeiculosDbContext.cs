@@ -7,6 +7,8 @@ public sealed class VeiculosDbContext(DbContextOptions<VeiculosDbContext> option
 {
     public DbSet<Veiculo> Veiculos => Set<Veiculo>();
 
+    public DbSet<FotoVeiculo> FotosVeiculo => Set<FotoVeiculo>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(VeiculosDbContext).Assembly);
