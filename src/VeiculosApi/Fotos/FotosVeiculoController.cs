@@ -27,10 +27,8 @@ public sealed class FotosVeiculoController(
     {
         if (arquivo is null)
         {
-            throw new ValidacaoVeiculoException(new Dictionary<string, string[]>
-            {
-                ["arquivo"] = ["Envie a imagem no campo 'arquivo'."],
-            });
+            ModelState.AddModelError("arquivo", "Envie a imagem no campo 'arquivo'.");
+            return ValidationProblem(ModelState);
         }
 
         using var fluxo = new MemoryStream();
