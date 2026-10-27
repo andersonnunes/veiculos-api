@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace VeiculosApi.Seguranca;
+namespace VeiculosApi.Application.Keycloak;
 
 public sealed class KeycloakOptions
 {
