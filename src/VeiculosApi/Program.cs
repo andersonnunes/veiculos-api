@@ -14,6 +14,11 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 builder.Services.AddProblemDetails();
+builder.Services.AddCors(opcoes => opcoes.AddDefaultPolicy(politica => politica
+    .WithOrigins(builder.Configuration.GetSection("Cors:OrigensPermitidas").Get<string[]>() ?? [])
+    .AllowAnyHeader()
+    .WithMethods("GET", "POST", "PUT")
+    .WithExposedHeaders("Location")));
 builder.Services.AddExceptionHandler<ExcecoesDeNegocioHandler>();
 builder.Services.AddSegurancaKeycloak(builder.Configuration);
 builder.Services.AddInfrastructure(builder.Configuration);
@@ -34,6 +39,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseExceptionHandler();
 app.UseHttpsRedirection();
+app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
