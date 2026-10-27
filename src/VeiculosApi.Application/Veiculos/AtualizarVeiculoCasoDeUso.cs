@@ -2,7 +2,10 @@ using VeiculosApi.Domain.Veiculos;
 
 namespace VeiculosApi.Application.Veiculos;
 
-public sealed class AtualizarVeiculoCasoDeUso(IVeiculoRepositorio repositorio, TimeProvider relogio)
+public sealed class AtualizarVeiculoCasoDeUso(
+    IVeiculoRepositorio repositorio,
+    IVendasSincronizacao sincronizacao,
+    TimeProvider relogio)
 {
     public async Task<VeiculoDto?> ExecutarAsync(Guid id, EntradaAtualizarVeiculo entrada, CancellationToken cancellationToken)
     {
@@ -13,10 +16,14 @@ public sealed class AtualizarVeiculoCasoDeUso(IVeiculoRepositorio repositorio, T
         var agora = relogio.GetUtcNow();
         veiculo.Atualizar(
             new DadosEdicaoVeiculo(entrada.Marca, entrada.Modelo, entrada.Ano, entrada.Cor, entrada.Preco),
-            agora.Year);
+            agora.Year,
+            agora);
 
         await repositorio.SalvarAlteracoesAsync(cancellationToken);
 
-        return VeiculoDto.De(veiculo);
+        var dto = VeiculoDto.De(veiculo);
+        await sincronizacao.SincronizarAsync(dto, cancellationToken);
+
+        return dto;
     }
 }
