@@ -103,7 +103,7 @@ public class VeiculoTests
     {
         var veiculo = Criar();
 
-        veiculo.Atualizar(new DadosEdicaoVeiculo("Toyota", "Corolla", 2024, "Preto", 120000.00m), 2026);
+        veiculo.Atualizar(new DadosEdicaoVeiculo("Toyota", "Corolla", 2024, "Preto", 120000.00m), 2026, Agora);
 
         Assert.Equal("Toyota", veiculo.Marca);
         Assert.Equal("Corolla", veiculo.Modelo);
@@ -118,7 +118,7 @@ public class VeiculoTests
         var veiculo = Criar(placa: "ABC1D23");
         var id = veiculo.Id;
 
-        veiculo.Atualizar(new DadosEdicaoVeiculo("Toyota", "Corolla", 2024, "Preto", 120000.00m), 2026);
+        veiculo.Atualizar(new DadosEdicaoVeiculo("Toyota", "Corolla", 2024, "Preto", 120000.00m), 2026, Agora);
 
         Assert.Equal(id, veiculo.Id);
         Assert.Equal(ChassiValido, veiculo.Chassi);
@@ -133,7 +133,7 @@ public class VeiculoTests
         var veiculo = Criar(preco: 85000.00m);
 
         var excecao = Assert.Throws<ValidacaoVeiculoException>(
-            () => veiculo.Atualizar(new DadosEdicaoVeiculo("Fiat", "Argo", 2025, "Prata", 0m), 2026));
+            () => veiculo.Atualizar(new DadosEdicaoVeiculo("Fiat", "Argo", 2025, "Prata", 0m), 2026, Agora));
 
         Assert.True(excecao.Erros.ContainsKey("preco"));
         Assert.Equal(85000.00m, veiculo.Preco);
@@ -146,7 +146,7 @@ public class VeiculoTests
         veiculo.MarcarComoVendido();
 
         Assert.Throws<VeiculoVendidoException>(
-            () => veiculo.Atualizar(new DadosEdicaoVeiculo("Toyota", "Corolla", 2024, "Preto", 120000.00m), 2026));
+            () => veiculo.Atualizar(new DadosEdicaoVeiculo("Toyota", "Corolla", 2024, "Preto", 120000.00m), 2026, Agora));
     }
 
     [Fact]

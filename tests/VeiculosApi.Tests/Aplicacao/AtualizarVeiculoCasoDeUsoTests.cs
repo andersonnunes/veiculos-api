@@ -12,10 +12,10 @@ public class AtualizarVeiculoCasoDeUsoTests
     public async Task ExecutarAsync_VeiculoExistente_AtualizaESalva()
     {
         var repositorio = new RepositorioEmMemoria();
-        var cadastrado = await new CadastrarVeiculoCasoDeUso(repositorio, new FakeTimeProvider(Agora))
+        var cadastrado = await new CadastrarVeiculoCasoDeUso(repositorio, new SincronizacaoFalsa(), new FakeTimeProvider(Agora))
             .ExecutarAsync(new EntradaCadastrarVeiculo("Fiat", "Argo", 2025, "Prata", 85000.00m, "9BWZZZ377VT004251", null), CancellationToken.None);
 
-        var resultado = await new AtualizarVeiculoCasoDeUso(repositorio, new FakeTimeProvider(Agora))
+        var resultado = await new AtualizarVeiculoCasoDeUso(repositorio, new SincronizacaoFalsa(), new FakeTimeProvider(Agora))
             .ExecutarAsync(cadastrado.Id, new EntradaAtualizarVeiculo("Toyota", "Corolla", 2024, "Preto", 120000.00m), CancellationToken.None);
 
         Assert.NotNull(resultado);
@@ -28,7 +28,7 @@ public class AtualizarVeiculoCasoDeUsoTests
     [Fact]
     public async Task ExecutarAsync_VeiculoInexistente_RetornaNulo()
     {
-        var casoDeUso = new AtualizarVeiculoCasoDeUso(new RepositorioEmMemoria(), new FakeTimeProvider(Agora));
+        var casoDeUso = new AtualizarVeiculoCasoDeUso(new RepositorioEmMemoria(), new SincronizacaoFalsa(), new FakeTimeProvider(Agora));
 
         var resultado = await casoDeUso.ExecutarAsync(
             Guid.NewGuid(), new EntradaAtualizarVeiculo("Toyota", "Corolla", 2024, "Preto", 120000.00m), CancellationToken.None);
@@ -40,14 +40,29 @@ public class AtualizarVeiculoCasoDeUsoTests
     public async Task ExecutarAsync_VeiculoVendido_PropagaVeiculoVendido()
     {
         var repositorio = new RepositorioEmMemoria();
-        var cadastrado = await new CadastrarVeiculoCasoDeUso(repositorio, new FakeTimeProvider(Agora))
+        var cadastrado = await new CadastrarVeiculoCasoDeUso(repositorio, new SincronizacaoFalsa(), new FakeTimeProvider(Agora))
             .ExecutarAsync(new EntradaCadastrarVeiculo("Fiat", "Argo", 2025, "Prata", 85000.00m, "9BWZZZ377VT004251", null), CancellationToken.None);
         repositorio.Adicionados.Single().MarcarComoVendido();
 
-        await Assert.ThrowsAsync<VeiculoVendidoException>(() => new AtualizarVeiculoCasoDeUso(repositorio, new FakeTimeProvider(Agora))
+        await Assert.ThrowsAsync<VeiculoVendidoException>(() => new AtualizarVeiculoCasoDeUso(repositorio, new SincronizacaoFalsa(), new FakeTimeProvider(Agora))
             .ExecutarAsync(cadastrado.Id, new EntradaAtualizarVeiculo("Toyota", "Corolla", 2024, "Preto", 120000.00m), CancellationToken.None));
 
         Assert.False(repositorio.SalvouAlteracoes);
+    }
+
+    [Fact]
+    public async Task ExecutarAsync_VeiculoExistente_SincronizaVersaoAtualizada()
+    {
+        var repositorio = new RepositorioEmMemoria();
+        var sincronizacao = new SincronizacaoFalsa();
+        var cadastrado = await new CadastrarVeiculoCasoDeUso(repositorio, new SincronizacaoFalsa(), new FakeTimeProvider(Agora))
+            .ExecutarAsync(new EntradaCadastrarVeiculo("Fiat", "Argo", 2025, "Prata", 85000.00m, "9BWZZZ377VT004251", null), CancellationToken.None);
+
+        var resultado = await new AtualizarVeiculoCasoDeUso(repositorio, sincronizacao, new FakeTimeProvider(Agora))
+            .ExecutarAsync(cadastrado.Id, new EntradaAtualizarVeiculo("Toyota", "Corolla", 2024, "Preto", 120000.00m), CancellationToken.None);
+
+        var enviado = Assert.Single(sincronizacao.Enviados);
+        Assert.Equal(resultado, enviado);
     }
 
     private sealed class RepositorioEmMemoria : IVeiculoRepositorio

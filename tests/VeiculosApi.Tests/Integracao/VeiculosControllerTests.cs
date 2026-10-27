@@ -173,6 +173,31 @@ public sealed class VeiculosControllerTests(KeycloakFixture keycloak, PostgresFi
         Assert.Equal(HttpStatusCode.Conflict, resposta.StatusCode);
     }
 
+    [Fact]
+    public async Task Cadastrar_DadosValidos_SincronizaComVendas()
+    {
+        using var fabrica = new ApiComKeycloak(keycloak, postgres);
+        var cliente = ClienteComToken(fabrica, await TokenVendedorAsync());
+
+        var id = await CadastrarAsync(cliente);
+
+        var enviado = Assert.Single(fabrica.Sincronizacao.Enviados);
+        Assert.Equal(id, enviado.Id);
+    }
+
+    [Fact]
+    public async Task Atualizar_DadosValidos_SincronizaVersaoAtualizada()
+    {
+        using var fabrica = new ApiComKeycloak(keycloak, postgres);
+        var cliente = ClienteComToken(fabrica, await TokenVendedorAsync());
+        var id = await CadastrarAsync(cliente);
+
+        await cliente.PutAsJsonAsync($"/veiculos/{id}", new AtualizacaoBody("Toyota", "Corolla", 2024, "Preto", 120000.00m));
+
+        Assert.Equal(2, fabrica.Sincronizacao.Enviados.Count);
+        Assert.Equal("Toyota", fabrica.Sincronizacao.Enviados[^1].Marca);
+    }
+
     private static async Task<Guid> CadastrarAsync(HttpClient cliente)
     {
         var criacao = await cliente.PostAsJsonAsync("/veiculos", Body(GerarChassi()));

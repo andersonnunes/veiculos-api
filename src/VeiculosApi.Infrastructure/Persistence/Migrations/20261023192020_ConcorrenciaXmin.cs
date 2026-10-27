@@ -16,6 +16,7 @@ namespace VeiculosApi.Infrastructure.Persistence.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            // Nada a desfazer: a migration não criou coluna, então não há o que remover.
         }
     }
 }

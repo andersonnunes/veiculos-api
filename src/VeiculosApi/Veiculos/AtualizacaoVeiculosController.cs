@@ -1,0 +1,21 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using VeiculosApi.Application.Veiculos;
+using VeiculosApi.Seguranca;
+
+namespace VeiculosApi.Veiculos;
+
+[ApiController]
+[Route("veiculos")]
+[Authorize(Policy = PoliticasAutorizacao.OperacaoCatalogo)]
+public sealed class AtualizacaoVeiculosController(AtualizarVeiculoCasoDeUso atualizarVeiculo) : ControllerBase
+{
+    [HttpPut("{id:guid}")]
+    [ProducesResponseType<VeiculoResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Atualizar(Guid id, [FromBody] AtualizarVeiculoRequest request, CancellationToken cancellationToken)
+    {
+        var veiculo = await atualizarVeiculo.ExecutarAsync(id, request.ParaEntrada(), cancellationToken);
+        return veiculo is null ? NotFound() : Ok(VeiculoResponse.De(veiculo));
+    }
+}

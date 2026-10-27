@@ -2,7 +2,10 @@ using VeiculosApi.Domain.Veiculos;
 
 namespace VeiculosApi.Application.Veiculos;
 
-public sealed class CadastrarVeiculoCasoDeUso(IVeiculoRepositorio repositorio, TimeProvider relogio)
+public sealed class CadastrarVeiculoCasoDeUso(
+    IVeiculoRepositorio repositorio,
+    IVendasSincronizacao sincronizacao,
+    TimeProvider relogio)
 {
     public async Task<VeiculoDto> ExecutarAsync(EntradaCadastrarVeiculo entrada, CancellationToken cancellationToken)
     {
@@ -25,6 +28,9 @@ public sealed class CadastrarVeiculoCasoDeUso(IVeiculoRepositorio repositorio, T
 
         await repositorio.AdicionarAsync(veiculo, cancellationToken);
 
-        return VeiculoDto.De(veiculo);
+        var dto = VeiculoDto.De(veiculo);
+        await sincronizacao.SincronizarAsync(dto, cancellationToken);
+
+        return dto;
     }
 }

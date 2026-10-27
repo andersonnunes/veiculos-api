@@ -30,6 +30,9 @@ namespace VeiculosApi.Infrastructure.Persistence.Migrations
                     b.Property<int>("Ano")
                         .HasColumnType("integer");
 
+                    b.Property<DateTimeOffset>("AtualizadoEm")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("Chassi")
                         .IsRequired()
                         .HasMaxLength(17)

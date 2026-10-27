@@ -12,7 +12,8 @@ public sealed record VeiculoDto(
     string Chassi,
     string? Placa,
     StatusVeiculo Status,
-    DateTimeOffset CriadoEm)
+    DateTimeOffset CriadoEm,
+    DateTimeOffset AtualizadoEm)
 {
     public static VeiculoDto De(Veiculo veiculo) => new(
         veiculo.Id,
@@ -24,5 +25,6 @@ public sealed record VeiculoDto(
         veiculo.Chassi,
         veiculo.Placa,
         veiculo.Status,
-        veiculo.CriadoEm);
+        veiculo.CriadoEm,
+        veiculo.AtualizadoEm);
 }
