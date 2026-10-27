@@ -2,6 +2,7 @@ using System.Runtime.CompilerServices;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 using VeiculosApi.Application.Veiculos;
+using VeiculosApi.Application.Veiculos.Fotos;
 using VeiculosApi.Erros;
 using VeiculosApi.Infrastructure;
 using VeiculosApi.Infrastructure.Persistence;
@@ -25,6 +26,9 @@ builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddScoped<CadastrarVeiculoCasoDeUso>();
 builder.Services.AddScoped<ObterVeiculoPorIdCasoDeUso>();
 builder.Services.AddScoped<AtualizarVeiculoCasoDeUso>();
+builder.Services.AddScoped<AdicionarFotoVeiculoCasoDeUso>();
+builder.Services.AddScoped<ListarFotosVeiculoCasoDeUso>();
+builder.Services.AddScoped<ObterConteudoFotoCasoDeUso>();
 
 var app = builder.Build();
 
