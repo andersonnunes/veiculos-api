@@ -78,6 +78,16 @@ curl -i -X POST http://localhost:5001/veiculos \
 - `400` (ProblemDetails com `errors` por campo) para dados inválidos.
 - `409` quando chassi ou placa já estão cadastrados.
 
+### Edição de veículo
+
+`PUT /veiculos/{id}` substitui marca, modelo, ano, cor e preço (chassi e placa não são editáveis).
+Mesmo papel exigido do cadastro.
+
+- `200 OK` com o veículo atualizado.
+- `400` para dados inválidos, com `errors` por campo.
+- `404` se o id não existir.
+- `409` se o veículo estiver vendido, ou se foi alterado por outra operação entre a leitura e a gravação.
+
 ## Como testar
 
 ```bash

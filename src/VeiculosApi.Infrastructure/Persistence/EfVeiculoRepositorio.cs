@@ -39,4 +39,22 @@ internal sealed class EfVeiculoRepositorio(VeiculosDbContext contexto) : IVeicul
     {
         return contexto.Veiculos.AsNoTracking().FirstOrDefaultAsync(v => v.Id == id, cancellationToken);
     }
+
+    public Task<Veiculo?> ObterParaAlteracaoAsync(Guid id, CancellationToken cancellationToken)
+    {
+        return contexto.Veiculos.FirstOrDefaultAsync(v => v.Id == id, cancellationToken);
+    }
+
+    public async Task SalvarAlteracoesAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await contexto.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            contexto.ChangeTracker.Clear();
+            throw new VeiculoConflitoConcorrenciaException();
+        }
+    }
 }

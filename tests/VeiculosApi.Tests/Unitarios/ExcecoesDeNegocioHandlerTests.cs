@@ -48,6 +48,30 @@ public class ExcecoesDeNegocioHandlerTests
     }
 
     [Fact]
+    public async Task VeiculoVendido_RetornaConflict()
+    {
+        var contexto = CriarContexto();
+
+        var tratada = await _handler.TryHandleAsync(
+            contexto, new VeiculoVendidoException(Guid.NewGuid()), CancellationToken.None);
+
+        Assert.True(tratada);
+        Assert.Equal(StatusCodes.Status409Conflict, contexto.Response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ConflitoDeConcorrencia_RetornaConflict()
+    {
+        var contexto = CriarContexto();
+
+        var tratada = await _handler.TryHandleAsync(
+            contexto, new VeiculoConflitoConcorrenciaException(), CancellationToken.None);
+
+        Assert.True(tratada);
+        Assert.Equal(StatusCodes.Status409Conflict, contexto.Response.StatusCode);
+    }
+
+    [Fact]
     public async Task OutraExcecao_NaoEhTratada()
     {
         var contexto = CriarContexto();

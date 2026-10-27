@@ -10,7 +10,8 @@ namespace VeiculosApi.Veiculos;
 [Authorize(Policy = PoliticasAutorizacao.OperacaoCatalogo)]
 public sealed class VeiculosController(
     CadastrarVeiculoCasoDeUso cadastrarVeiculo,
-    ObterVeiculoPorIdCasoDeUso obterVeiculoPorId) : ControllerBase
+    ObterVeiculoPorIdCasoDeUso obterVeiculoPorId,
+    AtualizarVeiculoCasoDeUso atualizarVeiculo) : ControllerBase
 {
     [HttpPost]
     [ProducesResponseType<VeiculoResponse>(StatusCodes.Status201Created)]
@@ -26,6 +27,15 @@ public sealed class VeiculosController(
     public async Task<IActionResult> ObterPorId(Guid id, CancellationToken cancellationToken)
     {
         var veiculo = await obterVeiculoPorId.ExecutarAsync(id, cancellationToken);
+        return veiculo is null ? NotFound() : Ok(VeiculoResponse.De(veiculo));
+    }
+
+    [HttpPut("{id:guid}")]
+    [ProducesResponseType<VeiculoResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Atualizar(Guid id, [FromBody] AtualizarVeiculoRequest request, CancellationToken cancellationToken)
+    {
+        var veiculo = await atualizarVeiculo.ExecutarAsync(id, request.ParaEntrada(), cancellationToken);
         return veiculo is null ? NotFound() : Ok(VeiculoResponse.De(veiculo));
     }
 }
