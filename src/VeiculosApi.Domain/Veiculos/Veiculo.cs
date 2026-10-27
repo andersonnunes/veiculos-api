@@ -23,6 +23,7 @@ public sealed partial class Veiculo
     public string? Placa { get; private set; }
     public StatusVeiculo Status { get; private set; }
     public DateTimeOffset CriadoEm { get; private set; }
+    public DateTimeOffset AtualizadoEm { get; private set; }
 
     public static Veiculo Cadastrar(Guid id, DadosVeiculo dados, int anoAtual, DateTimeOffset criadoEm)
     {
@@ -46,11 +47,12 @@ public sealed partial class Veiculo
             Chassi = chassi,
             Placa = placa,
             Status = StatusVeiculo.Disponivel,
-            CriadoEm = criadoEm
+            CriadoEm = criadoEm,
+            AtualizadoEm = criadoEm
         };
     }
 
-    public void Atualizar(DadosEdicaoVeiculo dados, int anoAtual)
+    public void Atualizar(DadosEdicaoVeiculo dados, int anoAtual, DateTimeOffset atualizadoEm)
     {
         if (Status == StatusVeiculo.Vendido)
             throw new VeiculoVendidoException(Id);
@@ -63,6 +65,7 @@ public sealed partial class Veiculo
         Ano = edicao.Ano;
         Cor = edicao.Cor;
         Preco = edicao.Preco;
+        AtualizadoEm = atualizadoEm;
     }
 
     public void MarcarComoVendido() => Status = StatusVeiculo.Vendido;

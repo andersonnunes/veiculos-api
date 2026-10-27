@@ -31,11 +31,11 @@ public sealed class EfVeiculoRepositorioConcorrenciaTests(PostgresFixture postgr
         await using (var contextoB = CriarContexto())
         {
             var lidoPorB = await contextoB.Veiculos.FirstAsync(v => v.Id == veiculo.Id);
-            lidoPorB.Atualizar(new DadosEdicaoVeiculo("Fiat", "Argo", 2025, "Branco", 85000.00m), 2026);
+            lidoPorB.Atualizar(new DadosEdicaoVeiculo("Fiat", "Argo", 2025, "Branco", 85000.00m), 2026, DateTimeOffset.UtcNow);
             await contextoB.SaveChangesAsync();
         }
 
-        lidoPorA!.Atualizar(new DadosEdicaoVeiculo("Fiat", "Argo", 2025, "Azul", 85000.00m), 2026);
+        lidoPorA!.Atualizar(new DadosEdicaoVeiculo("Fiat", "Argo", 2025, "Azul", 85000.00m), 2026, DateTimeOffset.UtcNow);
 
         await Assert.ThrowsAsync<VeiculoConflitoConcorrenciaException>(
             () => repositorioA.SalvarAlteracoesAsync(CancellationToken.None));
