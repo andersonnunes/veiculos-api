@@ -29,6 +29,7 @@ builder.Services.AddScoped<AtualizarVeiculoCasoDeUso>();
 builder.Services.AddScoped<AdicionarFotoVeiculoCasoDeUso>();
 builder.Services.AddScoped<ListarFotosVeiculoCasoDeUso>();
 builder.Services.AddScoped<ObterConteudoFotoCasoDeUso>();
+builder.Services.AddScoped<AplicarStatusVendaCasoDeUso>();
 
 var app = builder.Build();
 

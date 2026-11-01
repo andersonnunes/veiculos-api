@@ -26,6 +26,7 @@ internal sealed class VeiculoConfiguration : IEntityTypeConfiguration<Veiculo>
         builder.Property(v => v.Placa).HasMaxLength(7);
         builder.Property(v => v.Status).HasConversion<string>().HasMaxLength(20).IsRequired();
         builder.Property(v => v.CriadoEm).IsRequired();
+        builder.Property(v => v.StatusAtualizadoEm);
 
         builder.HasIndex(v => v.Chassi)
             .IsUnique()

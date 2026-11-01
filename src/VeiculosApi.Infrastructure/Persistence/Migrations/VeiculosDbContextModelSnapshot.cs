@@ -101,6 +101,9 @@ namespace VeiculosApi.Infrastructure.Persistence.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
 
+                    b.Property<DateTimeOffset?>("StatusAtualizadoEm")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<uint>("Versao")
                         .IsConcurrencyToken()
                         .ValueGeneratedOnAddOrUpdate()

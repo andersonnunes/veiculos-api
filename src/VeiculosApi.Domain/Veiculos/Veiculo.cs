@@ -25,6 +25,9 @@ public sealed partial class Veiculo
     public DateTimeOffset CriadoEm { get; private set; }
     public DateTimeOffset AtualizadoEm { get; private set; }
 
+    /// <summary>Instante da venda (em vendas-api) que definiu o status atual; null antes de qualquer notificação.</summary>
+    public DateTimeOffset? StatusAtualizadoEm { get; private set; }
+
     public static Veiculo Cadastrar(Guid id, DadosVeiculo dados, int anoAtual, DateTimeOffset criadoEm)
     {
         var edicao = Normalizar(new DadosEdicaoVeiculo(dados.Marca, dados.Modelo, dados.Ano, dados.Cor, dados.Preco));
@@ -52,6 +55,20 @@ public sealed partial class Veiculo
         };
     }
 
+    /// <summary>
+    /// Aplica o status final decidido por vendas-api. Idempotente: repetir o mesmo status não altera nada.
+    /// Notificação com ocorridoEm mais antigo que o último aplicado é descartada (last-write-wins).
+    /// Não altera AtualizadoEm, que representa só edições de dados do veículo.
+    /// </summary>
+    public void AplicarStatusVenda(StatusVeiculo novo, DateTimeOffset ocorridoEm)
+    {
+        if (StatusAtualizadoEm is { } ultimo && ocorridoEm < ultimo)
+            return;
+
+        Status = novo;
+        StatusAtualizadoEm = ocorridoEm;
+    }
+
     public void Atualizar(DadosEdicaoVeiculo dados, int anoAtual, DateTimeOffset atualizadoEm)
     {
         if (Status == StatusVeiculo.Vendido)
@@ -67,8 +84,6 @@ public sealed partial class Veiculo
         Preco = edicao.Preco;
         AtualizadoEm = atualizadoEm;
     }
-
-    public void MarcarComoVendido() => Status = StatusVeiculo.Vendido;
 
     [GeneratedRegex("^[A-HJ-NPR-Z0-9]{17}$", RegexOptions.None, matchTimeoutMilliseconds: 100)]
     private static partial Regex RegexChassi();

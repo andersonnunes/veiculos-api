@@ -42,7 +42,7 @@ public class AtualizarVeiculoCasoDeUsoTests
         var repositorio = new RepositorioEmMemoria();
         var cadastrado = await new CadastrarVeiculoCasoDeUso(repositorio, new SincronizacaoFalsa(), new FakeTimeProvider(Agora))
             .ExecutarAsync(new EntradaCadastrarVeiculo("Fiat", "Argo", 2025, "Prata", 85000.00m, "9BWZZZ377VT004251", null), CancellationToken.None);
-        repositorio.Adicionados.Single().MarcarComoVendido();
+        repositorio.Adicionados.Single().AplicarStatusVenda(StatusVeiculo.Vendido, Agora);
 
         await Assert.ThrowsAsync<VeiculoVendidoException>(() => new AtualizarVeiculoCasoDeUso(repositorio, new SincronizacaoFalsa(), new FakeTimeProvider(Agora))
             .ExecutarAsync(cadastrado.Id, new EntradaAtualizarVeiculo("Toyota", "Corolla", 2024, "Preto", 120000.00m), CancellationToken.None));
