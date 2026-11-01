@@ -143,18 +143,18 @@ public class VeiculoTests
     public void Atualizar_VeiculoVendido_LancaVeiculoVendido()
     {
         var veiculo = Criar();
-        veiculo.MarcarComoVendido();
+        veiculo.AplicarStatusVenda(StatusVeiculo.Vendido, Agora);
 
         Assert.Throws<VeiculoVendidoException>(
             () => veiculo.Atualizar(new DadosEdicaoVeiculo("Toyota", "Corolla", 2024, "Preto", 120000.00m), 2026, Agora));
     }
 
     [Fact]
-    public void MarcarComoVendido_VeiculoDisponivel_MudaStatusParaVendido()
+    public void AplicarStatusVenda_VeiculoDisponivel_MudaStatusParaVendido()
     {
         var veiculo = Criar();
 
-        veiculo.MarcarComoVendido();
+        veiculo.AplicarStatusVenda(StatusVeiculo.Vendido, Agora);
 
         Assert.Equal(StatusVeiculo.Vendido, veiculo.Status);
     }

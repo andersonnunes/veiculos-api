@@ -85,8 +85,6 @@ public sealed partial class Veiculo
         AtualizadoEm = atualizadoEm;
     }
 
-    public void MarcarComoVendido() => Status = StatusVeiculo.Vendido;
-
     [GeneratedRegex("^[A-HJ-NPR-Z0-9]{17}$", RegexOptions.None, matchTimeoutMilliseconds: 100)]
     private static partial Regex RegexChassi();
 

@@ -166,7 +166,7 @@ public sealed class VeiculosControllerTests(KeycloakFixture keycloak, PostgresFi
         using var fabrica = new ApiComKeycloak(keycloak, postgres);
         var cliente = ClienteComToken(fabrica, await TokenVendedorAsync());
         var id = await CadastrarAsync(cliente);
-        await MarcarComoVendidoNoBancoAsync(fabrica, id);
+        await VenderNoBancoAsync(fabrica, id);
 
         var resposta = await cliente.PutAsJsonAsync($"/veiculos/{id}", new AtualizacaoBody("Toyota", "Corolla", 2024, "Preto", 120000.00m));
 
@@ -205,12 +205,12 @@ public sealed class VeiculosControllerTests(KeycloakFixture keycloak, PostgresFi
         return corpo.GetProperty("id").GetGuid();
     }
 
-    private static async Task MarcarComoVendidoNoBancoAsync(ApiComKeycloak fabrica, Guid id)
+    private static async Task VenderNoBancoAsync(ApiComKeycloak fabrica, Guid id)
     {
         using var escopo = fabrica.Services.CreateScope();
         var contexto = escopo.ServiceProvider.GetRequiredService<VeiculosDbContext>();
         var veiculo = await contexto.Veiculos.FirstAsync(v => v.Id == id);
-        veiculo.MarcarComoVendido();
+        veiculo.AplicarStatusVenda(StatusVeiculo.Vendido, DateTimeOffset.UtcNow);
         await contexto.SaveChangesAsync();
     }
 
