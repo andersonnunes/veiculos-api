@@ -80,6 +80,18 @@ public sealed class StatusVendaInternoControllerTests(KeycloakFixture keycloak, 
     }
 
     [Fact]
+    public async Task Aplicar_SemOcorridoEm_Retorna400()
+    {
+        using var fabrica = new ApiComKeycloak(keycloak, postgres);
+        var servico = ClienteComToken(fabrica, await keycloak.ObterTokenServicoAsync("vendas-api", "dev-vendas-api-secret"));
+        var id = await CadastrarVeiculoAsync(ClienteComToken(fabrica, await keycloak.ObterTokenUsuarioAsync("vendedor-dev", "dev-vendedor")));
+
+        var resposta = await servico.PutAsJsonAsync($"/internal/veiculos/{id}/status", new { status = "vendido" });
+
+        Assert.Equal(HttpStatusCode.BadRequest, resposta.StatusCode);
+    }
+
+    [Fact]
     public async Task Aplicar_VeiculoInexistente_Retorna404()
     {
         using var fabrica = new ApiComKeycloak(keycloak, postgres);

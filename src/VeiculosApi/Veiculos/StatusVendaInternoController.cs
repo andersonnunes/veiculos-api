@@ -29,10 +29,15 @@ public sealed class StatusVendaInternoController(AplicarStatusVendaCasoDeUso apl
             ModelState.AddModelError(nameof(request.Status), "Status deve ser 'vendido' ou 'disponivel'.");
             return ValidationProblem(ModelState);
         }
+        if (request.OcorridoEm is not { } ocorridoEm)
+        {
+            ModelState.AddModelError(nameof(request.OcorridoEm), "Informe o instante da venda em 'ocorridoEm'.");
+            return ValidationProblem(ModelState);
+        }
 
-        var veiculo = await aplicarStatusVenda.ExecutarAsync(id, status, request.OcorridoEm, cancellationToken);
+        var veiculo = await aplicarStatusVenda.ExecutarAsync(id, status, ocorridoEm, cancellationToken);
         return veiculo is null ? NotFound() : Ok(VeiculoResponse.De(veiculo));
     }
 }
 
-public sealed record AplicarStatusVendaRequest(string? Status, DateTimeOffset OcorridoEm);
+public sealed record AplicarStatusVendaRequest(string? Status, DateTimeOffset? OcorridoEm);
