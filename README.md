@@ -178,6 +178,8 @@ veiculos-api/
 │   └── VeiculosApi/                # API: controllers, autenticação, Program.cs, Dockerfile
 ├── tests/VeiculosApi.Tests/        # testes de domínio, aplicação e integração (xUnit)
 ├── infra/docker-compose.yml        # serviço, PostgreSQL, Keycloak e MinIO
+├── deploy/k8s/                     # manifests Kubernetes (kustomize)
+├── deploy/kind/cluster.yaml        # cluster kind com o registry local
 └── .github/workflows/ci.yml        # build, lint, testes com cobertura ≥80% e scan de imagem
 ```
 
@@ -196,4 +198,36 @@ Todo Pull Request roda `dotnet restore`, `dotnet format --verify-no-changes`, `d
 com Trivy, que falha em qualquer HIGH ou CRITICAL. A branch `main` é protegida: só aceita merge com
 o workflow de CI verde.
 
-O deploy automatizado, disparado por merge em `main`, ainda não está implementado.
+### Deploy no Kubernetes (kind)
+
+Os manifests ficam em `deploy/k8s/` (namespace `veiculos`, API, banco próprio com `StatefulSet`,
+`ConfigMap` e `Secret` de dev). O cluster de teste fica em `deploy/kind/cluster.yaml`.
+
+Testado localmente: o `Deployment` sobe, o pod fica `Ready` e `GET /health` responde
+`{"status":"healthy"}` dentro do cluster. Para reproduzir:
+
+```bash
+# 1. Registry local, ligado à rede do kind (sem `kind load`)
+docker run -d --restart=always --name kind-registry -p 5000:5000 registry:2
+
+# 2. Cluster kind com o containerd apontando para o registry
+kind create cluster --name veiculos-cd --config deploy/kind/cluster.yaml
+docker network connect kind kind-registry
+
+# 3. Publicar a imagem no registry local
+docker build -t localhost:5000/veiculos-api:dev -f src/VeiculosApi/Dockerfile .
+docker push localhost:5000/veiculos-api:dev
+
+# 4. Aplicar e esperar
+kubectl apply -k deploy/k8s
+kubectl -n veiculos rollout status deployment/veiculos-api --timeout=300s
+
+# 5. Conferir
+kubectl -n veiculos port-forward svc/veiculos-api 18080:8080 &
+curl http://localhost:18080/health
+```
+
+**Ainda não automatizado:** o pipeline do GitHub Actions que publica a imagem no GHCR e faz o deploy
+a cada merge em `main` não está escrito. Hoje o deploy é manual, como descrito acima. Os manifests
+usam o Keycloak e o MinIO apenas como configuração: eles não sobem no cluster, então endpoints que
+dependem de autenticação ou de fotos não funcionam ali.
