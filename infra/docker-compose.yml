@@ -26,6 +26,11 @@ services:
       - Minio__SecretKey=minioadmin
       - Minio__Bucket=veiculos-fotos
       - Minio__Secure=false
+      # O vendas-api roda em outro compose e publica a porta 5002 na máquina. De dentro deste
+      # contêiner, o endereço alcançável é o host (host.docker.internal).
+      - VendasApi__BaseUrl=http://host.docker.internal:5002
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "5001:8080"
     depends_on:
