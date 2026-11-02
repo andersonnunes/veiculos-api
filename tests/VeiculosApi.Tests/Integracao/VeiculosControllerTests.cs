@@ -198,6 +198,91 @@ public sealed class VeiculosControllerTests(KeycloakFixture keycloak, PostgresFi
         Assert.Equal("Toyota", fabrica.Sincronizacao.Enviados[^1].Marca);
     }
 
+    [Fact]
+    public async Task Cadastrar_MesmoChassiSimultaneo_SoUmEhCriado()
+    {
+        using var fabrica = new ApiComKeycloak(keycloak, postgres);
+        var cliente = ClienteComToken(fabrica, await TokenVendedorAsync());
+        var chassi = GerarChassi();
+
+        var respostas = await Task.WhenAll(
+            cliente.PostAsJsonAsync("/veiculos", Body(chassi)),
+            cliente.PostAsJsonAsync("/veiculos", Body(chassi)));
+
+        // A unicidade é garantida no banco: a segunda chegada não pode criar outra linha.
+        var codigos = respostas.Select(r => r.StatusCode).OrderBy(c => c).ToList();
+        Assert.Equal(new[] { HttpStatusCode.Created, HttpStatusCode.Conflict }, codigos);
+        Assert.Equal(1, await ContarPorChassiAsync(fabrica, chassi));
+    }
+
+    [Fact]
+    public async Task Atualizar_EdicoesSimultaneas_NaoMisturaCamposDeDuasEdicoes()
+    {
+        using var fabrica = new ApiComKeycloak(keycloak, postgres);
+        var cliente = ClienteComToken(fabrica, await TokenVendedorAsync());
+        var id = await CadastrarAsync(cliente);
+        var a = new AtualizacaoBody("Toyota", "Corolla", 2024, "Preto", 110000.00m);
+        var b = new AtualizacaoBody("Honda", "Civic", 2023, "Branco", 99000.00m);
+
+        var respostas = await Task.WhenAll(
+            cliente.PutAsJsonAsync($"/veiculos/{id}", a),
+            cliente.PutAsJsonAsync($"/veiculos/{id}", b));
+
+        Assert.All(respostas, r => Assert.Contains(r.StatusCode, new[] { HttpStatusCode.OK, HttpStatusCode.Conflict }));
+        Assert.Contains(respostas, r => r.StatusCode == HttpStatusCode.OK);
+
+        // O estado final é exatamente uma das duas edições, inteira, e a vencedora é a que foi aceita.
+        var final = await cliente.GetFromJsonAsync<JsonElement>($"/veiculos/{id}");
+        var marca = final.GetProperty("marca").GetString();
+        var cor = final.GetProperty("cor").GetString();
+        var preco = final.GetProperty("preco").GetDecimal();
+        var venceuA = marca == "Toyota" && cor == "Preto" && preco == 110000.00m;
+        var venceuB = marca == "Honda" && cor == "Branco" && preco == 99000.00m;
+        Assert.True(venceuA ^ venceuB, $"Campos misturados: marca={marca} cor={cor} preco={preco}");
+        Assert.Equal(HttpStatusCode.OK, respostas[venceuA ? 0 : 1].StatusCode);
+    }
+
+    [Fact]
+    public async Task Atualizar_CorridaComVenda_EdicaoSoPrevaleceSeFoiAceitaAntesDaVenda()
+    {
+        using var fabrica = new ApiComKeycloak(keycloak, postgres);
+        var vendedor = ClienteComToken(fabrica, await TokenVendedorAsync());
+        var servico = ClienteComToken(fabrica, await keycloak.ObterTokenServicoAsync("vendas-api", "dev-vendas-api-secret"));
+        var id = await CadastrarAsync(vendedor);
+        var edicao = new AtualizacaoBody("Honda", "Civic", 2023, "Branco", 99000.00m);
+
+        // As duas requisições partem antes de qualquer espera: é isso que cria a corrida.
+        var tarefaEdicao = vendedor.PutAsJsonAsync($"/veiculos/{id}", edicao);
+        var tarefaVenda = servico.PutAsJsonAsync($"/internal/veiculos/{id}/status", new { status = "vendido", ocorridoEm = DateTimeOffset.UtcNow });
+        await Task.WhenAll(tarefaEdicao, tarefaVenda);
+        var respostaEdicao = await tarefaEdicao;
+        var respostaVenda = await tarefaVenda;
+
+        // A venda sempre é aplicada. A edição ou é aceita antes dela, ou recusada depois: nunca
+        // sobrescreve os dados de um veículo que já foi vendido.
+        Assert.Equal(HttpStatusCode.OK, respostaVenda.StatusCode);
+        Assert.Contains(respostaEdicao.StatusCode, new[] { HttpStatusCode.OK, HttpStatusCode.Conflict });
+
+        var final = await vendedor.GetFromJsonAsync<JsonElement>($"/veiculos/{id}");
+        Assert.Equal("vendido", final.GetProperty("status").GetString());
+        var marcaFinal = final.GetProperty("marca").GetString();
+        if (respostaEdicao.StatusCode == HttpStatusCode.OK)
+        {
+            Assert.Equal("Honda", marcaFinal);
+        }
+        else
+        {
+            Assert.Equal("Fiat", marcaFinal);
+        }
+    }
+
+    private static async Task<int> ContarPorChassiAsync(ApiComKeycloak fabrica, string chassi)
+    {
+        using var escopo = fabrica.Services.CreateScope();
+        var contexto = escopo.ServiceProvider.GetRequiredService<VeiculosDbContext>();
+        return await contexto.Veiculos.AsNoTracking().CountAsync(v => v.Chassi == chassi);
+    }
+
     private static async Task<Guid> CadastrarAsync(HttpClient cliente)
     {
         var criacao = await cliente.PostAsJsonAsync("/veiculos", Body(GerarChassi()));
