@@ -26,7 +26,7 @@ internal sealed class ExcecoesDeNegocioHandler : IExceptionHandler
                 extensions: new Dictionary<string, object?>
                 {
                     [ChaveCodigo] = "veiculo_duplicado",
-                    [ChaveCampo] = duplicado.Campo,
+                    [ChaveCampo] = duplicado.Campo.Nome(),
                 }),
             VeiculoVendidoException => Results.Problem(
                 title: "Veículo vendido",
@@ -53,11 +53,11 @@ internal sealed class ExcecoesDeNegocioHandler : IExceptionHandler
         return true;
     }
 
-    // Concorda com o campo: "este chassi" e "esta placa". Um campo desconhecido cai numa forma neutra.
-    private static string DescricaoDoCampo(string campo) => campo switch
+    // Concorda com o campo: "este chassi" e "esta placa".
+    private static string DescricaoDoCampo(CampoUnico campo) => campo switch
     {
-        "chassi" => "este chassi",
-        "placa" => "esta placa",
-        _ => "este dado",
+        CampoUnico.Chassi => "este chassi",
+        CampoUnico.Placa => "esta placa",
+        _ => throw new ArgumentOutOfRangeException(nameof(campo), campo, "Campo único desconhecido."),
     };
 }

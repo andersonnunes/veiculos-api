@@ -70,8 +70,8 @@ public class AtualizarVeiculoCasoDeUsoTests
         public List<Veiculo> Adicionados { get; } = [];
         public bool SalvouAlteracoes { get; private set; }
 
-        public Task<string?> CampoDuplicadoAsync(string chassi, string? placa, CancellationToken cancellationToken) =>
-            Task.FromResult<string?>(null);
+        public Task<CampoUnico?> CampoDuplicadoAsync(string chassi, string? placa, CancellationToken cancellationToken) =>
+            Task.FromResult<CampoUnico?>(null);
 
         public Task AdicionarAsync(Veiculo veiculo, CancellationToken cancellationToken)
         {

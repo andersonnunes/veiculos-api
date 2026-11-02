@@ -42,7 +42,7 @@ public class ExcecoesDeNegocioHandlerTests
         var contexto = CriarContexto();
 
         var tratada = await _handler.TryHandleAsync(
-            contexto, new VeiculoDuplicadoException("chassi"), CancellationToken.None);
+            contexto, new VeiculoDuplicadoException(CampoUnico.Chassi), CancellationToken.None);
 
         Assert.True(tratada);
         Assert.Equal(StatusCodes.Status409Conflict, contexto.Response.StatusCode);
@@ -73,9 +73,9 @@ public class ExcecoesDeNegocioHandlerTests
     }
 
     [Theory]
-    [InlineData("chassi", "este chassi")]
-    [InlineData("placa", "esta placa")]
-    public async Task VeiculoDuplicado_TrazCodigoCampoEMensagemQueConcordaComOCampo(string campo, string descricao)
+    [InlineData(CampoUnico.Chassi, "este chassi")]
+    [InlineData(CampoUnico.Placa, "esta placa")]
+    public async Task VeiculoDuplicado_TrazCodigoCampoEMensagemQueConcordaComOCampo(CampoUnico campo, string descricao)
     {
         var contexto = CriarContexto();
 
@@ -83,7 +83,7 @@ public class ExcecoesDeNegocioHandlerTests
 
         var corpo = await LerCorpoAsync(contexto);
         Assert.Equal("veiculo_duplicado", corpo.GetProperty("codigo").GetString());
-        Assert.Equal(campo, corpo.GetProperty("campo").GetString());
+        Assert.Equal(campo.Nome(), corpo.GetProperty("campo").GetString());
         Assert.Equal($"Já existe um veículo com {descricao}.", corpo.GetProperty("detail").GetString());
         Assert.Equal("Veículo já cadastrado", corpo.GetProperty("title").GetString());
     }
