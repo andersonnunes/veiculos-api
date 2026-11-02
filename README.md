@@ -1,30 +1,99 @@
 # veiculos-api
 
-Serviço de cadastro e edição de veículos para uma plataforma de revenda de veículos
-automotores (Tech Challenge Fase 4 — SOAT/PósTech). Repositório físico independente,
-responsável pela gestão do catálogo (marca, modelo, ano, cor, preço) — não lida com
-listagem nem venda, que são responsabilidade isolada do repositório irmão
-[`vendas-api`](https://github.com/andersonnunes/vendas-api), com banco de dados próprio.
+Serviço de cadastro e edição de veículos para uma plataforma de revenda de veículos automotores
+(Tech Challenge Fase 4 — SOAT/PósTech).
 
-Os dois serviços se comunicam apenas via HTTP (sem acesso direto a banco um do outro): este
-serviço notifica o `vendas-api` sempre que um veículo é cadastrado/editado, e recebe de volta
-o status final de uma venda, para bloquear edição de veículos já vendidos.
+**O que faz**: mantém o catálogo de veículos (marca, modelo, ano, cor, preço, chassi, placa e
+fotos). Recebe o status final das vendas do [`vendas-api`](https://github.com/andersonnunes/vendas-api)
+para bloquear edição de veículos já vendidos.
 
-## Stack
+**O que não faz**: não lista veículos à venda nem efetua vendas. Essas responsabilidades ficam no
+`vendas-api`, que tem banco de dados próprio.
 
-- .NET 10 (ASP.NET Core Web API, controllers)
-- PostgreSQL (banco próprio deste serviço, isolado do `vendas-api`)
-- xUnit + `WebApplicationFactory` para testes de integração
-- Docker + GitHub Actions (CI: build, lint, testes com gate de cobertura ≥80%, scan de
-  vulnerabilidades com Trivy)
+## Como foi implementado
+
+Organizado em camadas, com dependências apontando para dentro:
+
+| Projeto | Responsabilidade |
+|---|---|
+| `VeiculosApi.Domain` | Entidades e invariantes do veículo. Sem dependências externas. |
+| `VeiculosApi.Application` | Casos de uso e portas (`IVeiculoRepositorio`, entre outras). |
+| `VeiculosApi.Infrastructure` | EF Core com PostgreSQL, migrações, armazenamento de fotos (MinIO), cliente HTTP para o `vendas-api` e cliente Keycloak. |
+| `VeiculosApi` | API: controllers, autenticação JWT, `Program.cs` e `Dockerfile`. |
+
+**Sincronização com o `vendas-api`**: a cada cadastro ou edição, o serviço envia uma cópia do veículo
+para `PUT /internal/veiculos/{id}` no `vendas-api`, com token de serviço (`client_credentials`,
+cliente `veiculos-api`). O `vendas-api` mantém essa cópia para as listagens. O envio não tem
+nova tentativa: se falhar, o erro é registrado no log, mas a resposta ao cliente não muda (ver
+Limitações conhecidas).
+
+**Recebimento do status de venda**: o `vendas-api` chama `PUT /internal/veiculos/{id}/status` quando
+uma venda é concluída. Depois disso o veículo fica `vendido` e não aceita mais edição (`409`).
+
+**Autenticação**: JWT emitido pelo Keycloak. As rotas públicas exigem o papel `administrador` ou
+`vendedor`. As rotas `/internal` exigem o papel `servico` e o cliente chamador `vendas-api`.
+
+## Endpoints
+
+| Método | Rota | Quem chama | Respostas |
+|---|---|---|---|
+| `POST` | `/veiculos` | administrador, vendedor | `201`, `400`, `401`, `403`, `409` |
+| `GET` | `/veiculos/{id}` | administrador, vendedor | `200`, `401`, `403`, `404` |
+| `PUT` | `/veiculos/{id}` | administrador, vendedor | `200`, `400`, `401`, `403`, `404`, `409` |
+| `POST` | `/veiculos/{veiculoId}/fotos` | administrador, vendedor | `201`, `404` |
+| `GET` | `/veiculos/{veiculoId}/fotos` | administrador, vendedor | `200`, `404` |
+| `GET` | `/veiculos/{veiculoId}/fotos/{fotoId}/conteudo` | administrador, vendedor | `200`, `404` |
+| `PUT` | `/internal/veiculos/{id}/status` | serviço `vendas-api` | uso interno entre serviços |
+
+- `POST /veiculos` e `PUT /veiculos/{id}` recebem JSON com `marca`, `modelo`, `ano`, `cor` e `preco`.
+  O cadastro também recebe `chassi` e `placa`. Chassi e placa não são editáveis.
+- `409` no cadastro: chassi ou placa já cadastrados. `409` na edição: veículo vendido, ou alterado
+  por outra operação entre a leitura e a gravação.
+- `400` traz `ProblemDetails` com `errors` por campo.
+- `POST /veiculos/{veiculoId}/fotos` recebe `multipart/form-data` com o arquivo no campo `arquivo`.
+  **Depende do MinIO**, que não sobe com a imagem atualmente fixada (ver Limitações conhecidas).
+
+## Configuração
+
+Valores de desenvolvimento, já presentes em `appsettings.Development.json`. Não são de produção.
+
+| Chave | Padrão de dev | Para que serve |
+|---|---|---|
+| `ConnectionStrings:VeiculosDb` | `localhost:5433` | PostgreSQL deste serviço |
+| `Keycloak:EmissorPublico` | `http://localhost:8180/realms/revendax` | Emissor aceito nos tokens |
+| `Keycloak:EndpointToken` | `http://localhost:8180/.../token` | Obter token de serviço para chamar o `vendas-api` |
+| `VendasApi:BaseUrl` | `http://localhost:5002` | Endereço do `vendas-api` |
+| `Minio:Endpoint`, `Minio:Bucket` | `localhost:9000`, `veiculos-fotos` | Armazenamento das fotos |
 
 ## Como rodar localmente
 
+### Dependências do serviço
+
+PostgreSQL e Keycloak sobem pelo compose deste repositório, com o realm `revendax` já importado:
+
 ```bash
-docker compose -f infra/docker-compose.yml up --build
+docker compose -f infra/docker-compose.yml up -d keycloak-db keycloak veiculos-db
 ```
 
-Sobe o serviço (`http://localhost:5001`) e seu Postgres (`localhost:5433`). Verificar:
+- PostgreSQL: `localhost:5433`.
+- Keycloak: `http://localhost:8180`.
+
+### Rodando o serviço
+
+**O compose completo ainda não sobe.** O serviço `veiculos-api` depende do `minio`, e a imagem
+fixada no compose não está disponível no Docker Hub (ver Limitações conhecidas). Por isso o serviço
+roda fora de container, enquanto essa imagem não for trocada.
+
+Requer o SDK do .NET pinado em `global.json` (`10.0.401`). A string de conexão não tem padrão nos
+arquivos de configuração, então precisa ser informada por variável de ambiente:
+
+```bash
+dotnet restore
+ConnectionStrings__VeiculosDb='Host=localhost;Port=5433;Database=veiculos;Username=veiculos;Password=veiculos' \
+  dotnet run --project src/VeiculosApi --urls http://localhost:5001
+```
+
+Verificar:
 
 ```bash
 curl http://localhost:5001/health
@@ -33,36 +102,18 @@ curl http://localhost:5001/health
 
 Em `Development`, a documentação interativa (Scalar) fica em `http://localhost:5001/scalar`.
 
-### Rodando fora de container
+### Usuários e tokens de desenvolvimento
 
-Requer o SDK do .NET pinado em `global.json` (`10.0.401`):
-
-```bash
-dotnet restore
-dotnet run --project src/VeiculosApi
-```
-
-### Autenticação (Keycloak de desenvolvimento)
-
-O compose sobe um Keycloak com o realm `revendax` já importado (`infra/keycloak/realm-revendax.json`).
-Credenciais de dev, não são de produção:
+Credenciais de dev, não são de produção.
 
 ```bash
 # Token de vendedor (usuário vendedor-dev / dev-vendedor)
 curl -s -d grant_type=password -d client_id=revendax-dev-cli \
   -d username=vendedor-dev -d password=dev-vendedor \
   http://localhost:8180/realms/revendax/protocol/openid-connect/token
-
-# Token de serviço (client_credentials) — o que outra API usaria para chamar esta
-curl -s -d grant_type=client_credentials -d client_id=vendas-api \
-  -d client_secret=dev-vendas-api-secret \
-  http://localhost:8180/realms/revendax/protocol/openid-connect/token
 ```
 
-### Cadastro de veículo
-
-Requer token com papel `administrador` ou `vendedor` (ver acima). Sem token → `401`; com token sem
-o papel → `403`.
+### Exemplo: cadastrar um veículo
 
 ```bash
 TOKEN=$(curl -s -d grant_type=password -d client_id=revendax-dev-cli \
@@ -71,22 +122,47 @@ TOKEN=$(curl -s -d grant_type=password -d client_id=revendax-dev-cli \
 
 curl -i -X POST http://localhost:5001/veiculos \
   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-  -d '{"marca":"Fiat","modelo":"Argo","ano":2025,"cor":"Prata","preco":85000.00,"chassi":"9BWZZZ377VT004251"}'
+  -d '{"marca":"Fiat","modelo":"Argo","ano":2025,"cor":"Prata","preco":85000.00,"chassi":"9BWZZZ377VT004251","placa":"ABC1D23"}'
 ```
 
-- `201 Created` com o veículo (status `disponivel`) e `Location` para `GET /veiculos/{id}`.
-- `400` (ProblemDetails com `errors` por campo) para dados inválidos.
-- `409` quando chassi ou placa já estão cadastrados.
+Resposta `201 Created`, com o veículo em `disponivel` e `Location` apontando para `GET /veiculos/{id}`.
 
-### Edição de veículo
+Chassi e placa precisam ser inéditos. Repetir o exemplo com os mesmos valores responde `409`: troque
+o chassi e a placa a cada execução.
 
-`PUT /veiculos/{id}` substitui marca, modelo, ano, cor e preço (chassi e placa não são editáveis).
-Mesmo papel exigido do cadastro.
+### Exemplo: editar um veículo
 
-- `200 OK` com o veículo atualizado.
-- `400` para dados inválidos, com `errors` por campo.
-- `404` se o id não existir.
-- `409` se o veículo estiver vendido, ou se foi alterado por outra operação entre a leitura e a gravação.
+```bash
+curl -i -X PUT http://localhost:5001/veiculos/{id} \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"marca":"Fiat","modelo":"Argo","ano":2025,"cor":"Branco","preco":82000.00}'
+```
+
+## Rodando junto com o `vendas-api`
+
+Com a configuração padrão, cada serviço valida tokens em um Keycloak diferente (`8180` aqui, `8280`
+no `vendas-api`). Nesse caso, a sincronização falha com `401` (ver Limitações conhecidas).
+
+Para rodar os dois juntos, suba as dependências deste serviço (ver Dependências do serviço) e o
+PostgreSQL do `vendas-api`:
+
+```bash
+docker compose -f ../vendas-api/infra/docker-compose.yml up -d vendas-db
+```
+
+Depois, inicie o `vendas-api` apontando o Keycloak para a instância deste serviço, por variáveis de
+ambiente:
+
+```bash
+ConnectionStrings__VendasDb='Host=localhost;Port=5434;Database=vendas;Username=vendas;Password=vendas' \
+Keycloak__EmissorPublico=http://localhost:8180/realms/revendax \
+Keycloak__MetadataInterna=http://localhost:8180/realms/revendax/.well-known/openid-configuration \
+Keycloak__EndpointToken=http://localhost:8180/realms/revendax/protocol/openid-connect/token \
+dotnet run --project ../vendas-api/src/VendasApi --urls http://localhost:5002
+```
+
+Com isso, um veículo cadastrado aqui aparece na listagem do `vendas-api`. Esse fluxo foi verificado
+com as duas APIs rodando.
 
 ## Como testar
 
@@ -94,10 +170,10 @@ Mesmo papel exigido do cadastro.
 dotnet test
 ```
 
-Os testes de integração sobem um Keycloak e um PostgreSQL reais via Testcontainers (é preciso
-Docker disponível).
+Os testes de integração sobem um Keycloak e um PostgreSQL reais via Testcontainers. Por isso é
+preciso ter Docker disponível. Os contêineres são criados a cada execução.
 
-Com cobertura (mesmo gate usado no CI, mínimo 80% de linhas):
+Com cobertura, pelo mesmo gate usado no CI (mínimo 80% de linhas):
 
 ```bash
 dotnet test tests/VeiculosApi.Tests/VeiculosApi.Tests.csproj -c Release \
@@ -113,22 +189,31 @@ veiculos-api/
 ├── global.json              # pina o SDK do .NET
 ├── veiculos-api.slnx
 ├── src/
-│   ├── VeiculosApi.Domain/         # entidades e invariantes (sem dependências externas)
-│   ├── VeiculosApi.Application/    # casos de uso e portas (IVeiculoRepositorio)
-│   ├── VeiculosApi.Infrastructure/ # EF Core/PostgreSQL, migrations, cliente Keycloak de saída
-│   └── VeiculosApi/                # API: controllers, autenticação JWT, Program.cs, Dockerfile
+│   ├── VeiculosApi.Domain/         # entidades e invariantes
+│   ├── VeiculosApi.Application/    # casos de uso e portas
+│   ├── VeiculosApi.Infrastructure/ # EF Core, migrações, MinIO, clientes HTTP e Keycloak
+│   └── VeiculosApi/                # API: controllers, autenticação, Program.cs, Dockerfile
 ├── tests/VeiculosApi.Tests/        # testes de domínio, aplicação e integração (xUnit)
-├── infra/docker-compose.yml # serviço + Postgres próprio
-├── docs/                    # modelagem de dados / arquitetura
-└── .github/workflows/ci.yml # build + lint + testes (cobertura ≥80%) + scan de imagem
+├── infra/docker-compose.yml        # serviço, PostgreSQL, Keycloak e MinIO
+└── .github/workflows/ci.yml        # build, lint, testes com cobertura ≥80% e scan de imagem
 ```
+
+## Limitações conhecidas
+
+- **Sincronização com o `vendas-api` sem nova tentativa e sem fila.** Se o `vendas-api` estiver
+  fora do ar, ou a chamada falhar, a alteração fica só aqui: o cadastro responde `201` mesmo assim.
+  O erro aparece no log do serviço.
+- **Keycloak separado por serviço.** Com a configuração padrão, a sincronização falha com `401`
+  (ver Rodando junto com o `vendas-api`).
+- **Fotos dependem do MinIO.** A imagem `minio/minio` fixada no compose não pode ser baixada do
+  Docker Hub. Sem o MinIO, o upload de foto responde `500`. Os endpoints de fotos estão
+  implementados, mas o fluxo completo ainda não foi validado em ambiente local.
 
 ## CI/CD
 
-Todo Pull Request roda `dotnet restore` + `dotnet format --verify-no-changes` + `dotnet build`
-+ `dotnet test` (com gate de cobertura de linha ≥80%) + build da imagem Docker + scan de
-vulnerabilidades (Trivy, falha em qualquer HIGH/CRITICAL). A branch `main` é protegida: só
-aceita merge com o workflow de CI verde.
+Todo Pull Request roda `dotnet restore`, `dotnet format --verify-no-changes`, `dotnet build`,
+`dotnet test` com gate de cobertura de linha ≥80%, build da imagem Docker e scan de vulnerabilidades
+com Trivy, que falha em qualquer HIGH ou CRITICAL. A branch `main` é protegida: só aceita merge com
+o workflow de CI verde.
 
-Deploy automatizado disparado por merge em `main` — detalhado quando a história de deploy
-deste serviço for implementada.
+O deploy automatizado, disparado por merge em `main`, ainda não está implementado.
