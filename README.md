@@ -33,6 +33,8 @@ uma venda é concluída. Depois disso o veículo fica `vendido` e não aceita ma
 **Autenticação**: JWT emitido pelo Keycloak. As rotas públicas exigem o papel `administrador` ou
 `vendedor`. As rotas `/internal` exigem o papel `servico` e o cliente chamador `vendas-api`.
 
+A modelagem de dados (entidades, status, chaves, índices e a comunicação com a `vendas-api`) está em [docs/modelagem.md](docs/modelagem.md).
+
 ## Endpoints
 
 | Método | Rota | Quem chama | Respostas |
@@ -177,6 +179,7 @@ veiculos-api/
 │   ├── VeiculosApi.Infrastructure/ # EF Core, migrações, MinIO, clientes HTTP e Keycloak
 │   └── VeiculosApi/                # API: controllers, autenticação, Program.cs, Dockerfile
 ├── tests/VeiculosApi.Tests/        # testes de domínio, aplicação e integração (xUnit)
+├── docs/modelagem.md               # modelagem de dados e fluxos entre os serviços
 ├── infra/docker-compose.yml        # serviço, PostgreSQL, Keycloak e MinIO
 ├── deploy/k8s/                     # manifests Kubernetes (kustomize)
 ├── deploy/kind/cluster.yaml        # cluster kind com o registry local
