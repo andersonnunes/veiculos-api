@@ -51,7 +51,7 @@ uma venda é concluída. Depois disso o veículo fica `vendido` e não aceita ma
   por outra operação entre a leitura e a gravação.
 - `400` traz `ProblemDetails` com `errors` por campo.
 - `POST /veiculos/{veiculoId}/fotos` recebe `multipart/form-data` com o arquivo no campo `arquivo`.
-  **Depende do MinIO**, que não sobe com a imagem atualmente fixada (ver Limitações conhecidas).
+  As fotos são gravadas no MinIO (serviço `minio` do compose).
 
 ## Configuração
 
@@ -67,31 +67,16 @@ Valores de desenvolvimento, já presentes em `appsettings.Development.json`. Nã
 
 ## Como rodar localmente
 
-### Dependências do serviço
+### Com container (recomendado)
 
-PostgreSQL e Keycloak sobem pelo compose deste repositório, com o realm `revendax` já importado:
-
-```bash
-docker compose -f infra/docker-compose.yml up -d keycloak-db keycloak veiculos-db
-```
-
-- PostgreSQL: `localhost:5433`.
-- Keycloak: `http://localhost:8180`.
-
-### Rodando o serviço
-
-**O compose completo ainda não sobe.** O serviço `veiculos-api` depende do `minio`, e a imagem
-fixada no compose não está disponível no Docker Hub (ver Limitações conhecidas). Por isso o serviço
-roda fora de container, enquanto essa imagem não for trocada.
-
-Requer o SDK do .NET pinado em `global.json` (`10.0.401`). A string de conexão não tem padrão nos
-arquivos de configuração, então precisa ser informada por variável de ambiente:
+Sobe o serviço, o PostgreSQL, o Keycloak (com o realm `revendax` já importado) e o MinIO para as fotos:
 
 ```bash
-dotnet restore
-ConnectionStrings__VeiculosDb='Host=localhost;Port=5433;Database=veiculos;Username=veiculos;Password=veiculos' \
-  dotnet run --project src/VeiculosApi --urls http://localhost:5001
+docker compose -f infra/docker-compose.yml up --build
 ```
+
+- Serviço: `http://localhost:5001`.
+- PostgreSQL: `localhost:5433`. Keycloak: `http://localhost:8180`. MinIO: `localhost:9000`.
 
 Verificar:
 
@@ -101,6 +86,18 @@ curl http://localhost:5001/health
 ```
 
 Em `Development`, a documentação interativa (Scalar) fica em `http://localhost:5001/scalar`.
+
+### Fora de container
+
+Mantenha o PostgreSQL, o Keycloak e o MinIO do compose de pé (`up -d keycloak-db keycloak veiculos-db minio`).
+Requer o SDK do .NET pinado em `global.json` (`10.0.401`). A string de conexão não tem padrão nos
+arquivos de configuração, então precisa ser informada por variável de ambiente:
+
+```bash
+dotnet restore
+ConnectionStrings__VeiculosDb='Host=localhost;Port=5433;Database=veiculos;Username=veiculos;Password=veiculos' \
+  dotnet run --project src/VeiculosApi --urls http://localhost:5001
+```
 
 ### Usuários e tokens de desenvolvimento
 
@@ -143,7 +140,7 @@ curl -i -X PUT http://localhost:5001/veiculos/{id} \
 Com a configuração padrão, cada serviço valida tokens em um Keycloak diferente (`8180` aqui, `8280`
 no `vendas-api`). Nesse caso, a sincronização falha com `401` (ver Limitações conhecidas).
 
-Para rodar os dois juntos, suba as dependências deste serviço (ver Dependências do serviço) e o
+Para rodar os dois juntos, suba as dependências deste serviço (`docker compose -f infra/docker-compose.yml up -d keycloak-db keycloak veiculos-db`) e o
 PostgreSQL do `vendas-api`:
 
 ```bash
@@ -205,9 +202,6 @@ veiculos-api/
   O erro aparece no log do serviço.
 - **Keycloak separado por serviço.** Com a configuração padrão, a sincronização falha com `401`
   (ver Rodando junto com o `vendas-api`).
-- **Fotos dependem do MinIO.** A imagem `minio/minio` fixada no compose não pode ser baixada do
-  Docker Hub. Sem o MinIO, o upload de foto responde `500`. Os endpoints de fotos estão
-  implementados, mas o fluxo completo ainda não foi validado em ambiente local.
 
 ## CI/CD
 
