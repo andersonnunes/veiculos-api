@@ -23,8 +23,8 @@ public sealed class CadastrarVeiculoCasoDeUso(
         var veiculo = Veiculo.Cadastrar(Guid.CreateVersion7(agora), dados, agora.Year, agora);
 
         var campoDuplicado = await repositorio.CampoDuplicadoAsync(veiculo.Chassi, veiculo.Placa, cancellationToken);
-        if (campoDuplicado is not null)
-            throw new VeiculoDuplicadoException(campoDuplicado);
+        if (campoDuplicado is { } campo)
+            throw new VeiculoDuplicadoException(campo);
 
         await repositorio.AdicionarAsync(veiculo, cancellationToken);
 

@@ -4,7 +4,7 @@ namespace VeiculosApi.Application.Veiculos;
 
 public interface IVeiculoRepositorio
 {
-    Task<string?> CampoDuplicadoAsync(string chassi, string? placa, CancellationToken cancellationToken);
+    Task<CampoUnico?> CampoDuplicadoAsync(string chassi, string? placa, CancellationToken cancellationToken);
 
     Task AdicionarAsync(Veiculo veiculo, CancellationToken cancellationToken);
 

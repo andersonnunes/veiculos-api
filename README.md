@@ -51,6 +51,10 @@ A modelagem de dados (entidades, status, chaves, índices e a comunicação com 
   O cadastro também recebe `chassi` e `placa`. Chassi e placa não são editáveis.
 - `409` no cadastro: chassi ou placa já cadastrados. `409` na edição: veículo vendido, ou alterado
   por outra operação entre a leitura e a gravação.
+- Os erros de negócio são `ProblemDetails` com um `codigo` estável, que o cliente usa para decidir o
+  tratamento: `veiculo_duplicado`, `veiculo_vendido`, `conflito_alteracao` e `limite_fotos`. O
+  `title` e o `detail` são texto para humanos e podem mudar.
+- Em `veiculo_duplicado`, o campo `campo` informa qual dado repetiu: `chassi` ou `placa`.
 - `400` traz `ProblemDetails` com `errors` por campo.
 - `POST /veiculos/{veiculoId}/fotos` recebe `multipart/form-data` com o arquivo no campo `arquivo`.
   As fotos são gravadas no MinIO (serviço `minio` do compose).

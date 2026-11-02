@@ -142,13 +142,13 @@ public sealed partial class Veiculo
     private static void ValidarChassi(Dictionary<string, List<string>> erros, string chassi)
     {
         if (!RegexChassi().IsMatch(chassi))
-            Adicionar(erros, "chassi", "Chassi deve ter 17 caracteres alfanuméricos, sem as letras I, O ou Q.");
+            Adicionar(erros, CampoUnico.Chassi.Nome(), "Chassi deve ter 17 caracteres alfanuméricos, sem as letras I, O ou Q.");
     }
 
     private static void ValidarPlaca(Dictionary<string, List<string>> erros, string? placa)
     {
         if (placa is not null && !RegexPlaca().IsMatch(placa))
-            Adicionar(erros, "placa", "Placa deve ter 7 caracteres alfanuméricos.");
+            Adicionar(erros, CampoUnico.Placa.Nome(), "Placa deve ter 7 caracteres alfanuméricos.");
     }
 
     private static void LancarSeInvalido(Dictionary<string, List<string>> erros)

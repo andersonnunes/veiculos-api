@@ -61,6 +61,39 @@ public sealed class VeiculosControllerTests(KeycloakFixture keycloak, PostgresFi
     }
 
     [Fact]
+    public async Task Cadastrar_ChassiJaCadastrado_TrazCodigoECampoNaResposta()
+    {
+        using var fabrica = new ApiComKeycloak(keycloak, postgres);
+        var cliente = ClienteComToken(fabrica, await TokenVendedorAsync());
+        var chassi = GerarChassi();
+        await cliente.PostAsJsonAsync("/veiculos", Body(chassi));
+
+        var resposta = await cliente.PostAsJsonAsync("/veiculos", Body(chassi));
+
+        Assert.Equal(HttpStatusCode.Conflict, resposta.StatusCode);
+        var corpo = await resposta.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("veiculo_duplicado", corpo.GetProperty("codigo").GetString());
+        Assert.Equal("chassi", corpo.GetProperty("campo").GetString());
+        Assert.Equal("Veículo já cadastrado", corpo.GetProperty("title").GetString());
+    }
+
+    [Fact]
+    public async Task Cadastrar_PlacaJaCadastrada_TrazCampoPlaca()
+    {
+        using var fabrica = new ApiComKeycloak(keycloak, postgres);
+        var cliente = ClienteComToken(fabrica, await TokenVendedorAsync());
+        var placa = GerarPlaca();
+        await cliente.PostAsJsonAsync("/veiculos", Body(GerarChassi(), placa));
+
+        var resposta = await cliente.PostAsJsonAsync("/veiculos", Body(GerarChassi(), placa));
+
+        Assert.Equal(HttpStatusCode.Conflict, resposta.StatusCode);
+        var corpo = await resposta.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("veiculo_duplicado", corpo.GetProperty("codigo").GetString());
+        Assert.Equal("placa", corpo.GetProperty("campo").GetString());
+    }
+
+    [Fact]
     public async Task Cadastrar_ChassiJaCadastrado_Retorna409()
     {
         using var fabrica = new ApiComKeycloak(keycloak, postgres);

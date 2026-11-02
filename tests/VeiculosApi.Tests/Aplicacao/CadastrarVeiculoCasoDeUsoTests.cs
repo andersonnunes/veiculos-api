@@ -26,13 +26,13 @@ public class CadastrarVeiculoCasoDeUsoTests
     [Fact]
     public async Task ExecutarAsync_ChassiJaCadastrado_LancaDuplicadoSemPersistir()
     {
-        var repositorio = new RepositorioEmMemoria { CampoDuplicado = "chassi" };
+        var repositorio = new RepositorioEmMemoria { CampoDuplicado = CampoUnico.Chassi };
         var casoDeUso = new CadastrarVeiculoCasoDeUso(repositorio, new SincronizacaoFalsa(), new FakeTimeProvider(Agora));
 
         var excecao = await Assert.ThrowsAsync<VeiculoDuplicadoException>(
             () => casoDeUso.ExecutarAsync(Entrada(), CancellationToken.None));
 
-        Assert.Equal("chassi", excecao.Campo);
+        Assert.Equal(CampoUnico.Chassi, excecao.Campo);
         Assert.Empty(repositorio.Adicionados);
     }
 
@@ -77,10 +77,10 @@ public class CadastrarVeiculoCasoDeUsoTests
 
     private sealed class RepositorioEmMemoria : IVeiculoRepositorio
     {
-        public string? CampoDuplicado { get; init; }
+        public CampoUnico? CampoDuplicado { get; init; }
         public List<Veiculo> Adicionados { get; } = [];
 
-        public Task<string?> CampoDuplicadoAsync(string chassi, string? placa, CancellationToken cancellationToken) =>
+        public Task<CampoUnico?> CampoDuplicadoAsync(string chassi, string? placa, CancellationToken cancellationToken) =>
             Task.FromResult(CampoDuplicado);
 
         public Task AdicionarAsync(Veiculo veiculo, CancellationToken cancellationToken)

@@ -58,8 +58,8 @@ public sealed class VeiculosRepositorioFalso : IVeiculoRepositorio
 {
     public List<Veiculo> Itens { get; } = [];
 
-    public Task<string?> CampoDuplicadoAsync(string chassi, string? placa, CancellationToken cancellationToken) =>
-        Task.FromResult<string?>(null);
+    public Task<CampoUnico?> CampoDuplicadoAsync(string chassi, string? placa, CancellationToken cancellationToken) =>
+        Task.FromResult<CampoUnico?>(null);
 
     public Task AdicionarAsync(Veiculo veiculo, CancellationToken cancellationToken)
     {

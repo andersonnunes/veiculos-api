@@ -9,11 +9,11 @@ internal sealed class EfVeiculoRepositorio(VeiculosDbContext contexto) : IVeicul
 {
     private const string SqlStateViolacaoUnicidade = "23505";
 
-    public Task<string?> CampoDuplicadoAsync(string chassi, string? placa, CancellationToken cancellationToken)
+    public Task<CampoUnico?> CampoDuplicadoAsync(string chassi, string? placa, CancellationToken cancellationToken)
     {
         return contexto.Veiculos
             .Where(v => v.Chassi == chassi || (placa != null && v.Placa == placa))
-            .Select(v => v.Chassi == chassi ? "chassi" : "placa")
+            .Select(v => (CampoUnico?)(v.Chassi == chassi ? CampoUnico.Chassi : CampoUnico.Placa))
             .FirstOrDefaultAsync(cancellationToken);
     }
 
@@ -29,8 +29,8 @@ internal sealed class EfVeiculoRepositorio(VeiculosDbContext contexto) : IVeicul
         {
             contexto.ChangeTracker.Clear();
             var campo = postgres.ConstraintName?.Contains("placa", StringComparison.OrdinalIgnoreCase) == true
-                ? "placa"
-                : "chassi";
+                ? CampoUnico.Placa
+                : CampoUnico.Chassi;
             throw new VeiculoDuplicadoException(campo);
         }
     }
