@@ -178,6 +178,8 @@ veiculos-api/
 │   └── VeiculosApi/                # API: controllers, autenticação, Program.cs, Dockerfile
 ├── tests/VeiculosApi.Tests/        # testes de domínio, aplicação e integração (xUnit)
 ├── infra/docker-compose.yml        # serviço, PostgreSQL, Keycloak e MinIO
+├── deploy/k8s/                     # manifests Kubernetes (kustomize)
+├── deploy/kind/cluster.yaml        # cluster kind com o registry local
 └── .github/workflows/ci.yml        # build, lint, testes com cobertura ≥80% e scan de imagem
 ```
 
@@ -196,4 +198,52 @@ Todo Pull Request roda `dotnet restore`, `dotnet format --verify-no-changes`, `d
 com Trivy, que falha em qualquer HIGH ou CRITICAL. A branch `main` é protegida: só aceita merge com
 o workflow de CI verde.
 
-O deploy automatizado, disparado por merge em `main`, ainda não está implementado.
+### Deploy no Kubernetes (kind)
+
+Os manifests ficam em `deploy/k8s/` (namespace `veiculos`, API, banco próprio com `StatefulSet`,
+`ConfigMap` e `Secret` de dev). O cluster de teste fica em `deploy/kind/cluster.yaml`.
+
+Testado localmente: o `Deployment` sobe, o pod fica `Ready` e `GET /health` responde
+`{"status":"healthy"}` dentro do cluster. Para reproduzir:
+
+```bash
+# 1. Registry local, ligado à rede do kind (sem `kind load`)
+docker run -d --restart=always --name kind-registry -p 5000:5000 registry:2
+
+# 2. Cluster kind com o containerd apontando para o registry
+kind create cluster --name veiculos-cd --config deploy/kind/cluster.yaml
+docker network connect kind kind-registry
+
+# 3. Publicar a imagem no registry local
+docker build -t localhost:5000/veiculos-api:dev -f src/VeiculosApi/Dockerfile .
+docker push localhost:5000/veiculos-api:dev
+
+# 4. Aplicar e esperar
+kubectl apply -k deploy/k8s
+kubectl -n veiculos rollout status deployment/veiculos-api --timeout=300s
+
+# 5. Conferir
+kubectl -n veiculos port-forward svc/veiculos-api 18080:8080 &
+curl http://localhost:18080/health
+```
+
+### Pipeline no GitHub Actions
+
+O workflow `.github/workflows/ci.yml` tem quatro jobs:
+
+- **`build-test`** (PR e `main`): build, testes com cobertura ≥80%, scan da imagem com Trivy.
+- **`validar-manifests`** (PR e `main`): renderiza o kustomize e valida o schema dos objetos com
+  kubeconform. Não publica nada.
+- **`publicar-imagem`** (só no merge em `main`): publica a imagem em `ghcr.io/andersonnunes/veiculos-api`
+  com tag do SHA do commit, e expõe o digest.
+- **`deploy`** (só no merge em `main`): cria um cluster `kind` efêmero, aponta a imagem para o digest,
+  aplica `deploy/k8s`, espera o `rollout` e faz smoke test em `/health`. O cluster é descartado no fim.
+
+O deploy usa o digest, nunca a tag `latest`. O pacote no GHCR é privado por padrão, então o job cria um
+segredo de pull com o `GITHUB_TOKEN` antes de aplicar os manifests.
+
+**Estado:** o workflow está escrito e validado localmente, mas ainda não rodou no GitHub. O que está
+verificado é a renderização do kustomize, o schema dos manifests e o comando de troca de digest.
+
+Os manifests usam o Keycloak e o MinIO apenas como configuração: eles não sobem no cluster de deploy,
+então endpoints que dependem de autenticação ou de fotos não funcionam ali.
