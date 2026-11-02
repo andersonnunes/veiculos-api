@@ -137,29 +137,15 @@ curl -i -X PUT http://localhost:5001/veiculos/{id} \
 
 ## Rodando junto com o `vendas-api`
 
-Com a configuração padrão, cada serviço valida tokens em um Keycloak diferente (`8180` aqui, `8280`
-no `vendas-api`). Nesse caso, a sincronização falha com `401` (ver Limitações conhecidas).
+Os dois serviços usam **um único Keycloak**, o deste repositório (`localhost:8180`). O compose do
+`vendas-api` já aponta para ele, então não é preciso configurar variáveis de ambiente.
 
-Para rodar os dois juntos, suba as dependências deste serviço (`docker compose -f infra/docker-compose.yml up -d keycloak-db keycloak veiculos-db`) e o
-PostgreSQL do `vendas-api`:
+1. Suba este serviço pelo compose deste repositório: `docker compose -f infra/docker-compose.yml up --build`.
+2. Suba o `vendas-api` pelo compose dele: `docker compose -f ../vendas-api/infra/docker-compose.yml up --build`.
 
-```bash
-docker compose -f ../vendas-api/infra/docker-compose.yml up -d vendas-db
-```
-
-Depois, inicie o `vendas-api` apontando o Keycloak para a instância deste serviço, por variáveis de
-ambiente:
-
-```bash
-ConnectionStrings__VendasDb='Host=localhost;Port=5434;Database=vendas;Username=vendas;Password=vendas' \
-Keycloak__EmissorPublico=http://localhost:8180/realms/revendax \
-Keycloak__MetadataInterna=http://localhost:8180/realms/revendax/.well-known/openid-configuration \
-Keycloak__EndpointToken=http://localhost:8180/realms/revendax/protocol/openid-connect/token \
-dotnet run --project ../vendas-api/src/VendasApi --urls http://localhost:5002
-```
-
-Com isso, um veículo cadastrado aqui aparece na listagem do `vendas-api`. Esse fluxo foi verificado
-com as duas APIs rodando.
+Com isso, um veículo cadastrado aqui aparece na listagem do `vendas-api`, e as chamadas entre os
+serviços passam pela máquina (`host.docker.internal`). Esse fluxo foi verificado com os dois
+composes de pé, com o roteiro de ponta a ponta passando em 21 de 21 verificações.
 
 ## Como testar
 
@@ -200,8 +186,8 @@ veiculos-api/
 - **Sincronização com o `vendas-api` sem nova tentativa e sem fila.** Se o `vendas-api` estiver
   fora do ar, ou a chamada falhar, a alteração fica só aqui: o cadastro responde `201` mesmo assim.
   O erro aparece no log do serviço.
-- **Keycloak separado por serviço.** Com a configuração padrão, a sincronização falha com `401`
-  (ver Rodando junto com o `vendas-api`).
+- **Depende do Keycloak deste serviço.** Os dois serviços validam tokens nele (`localhost:8180`),
+  então ele precisa estar de pé para a comunicação entre eles funcionar.
 
 ## CI/CD
 
