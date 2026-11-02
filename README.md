@@ -227,7 +227,23 @@ kubectl -n veiculos port-forward svc/veiculos-api 18080:8080 &
 curl http://localhost:18080/health
 ```
 
-**Ainda não automatizado:** o pipeline do GitHub Actions que publica a imagem no GHCR e faz o deploy
-a cada merge em `main` não está escrito. Hoje o deploy é manual, como descrito acima. Os manifests
-usam o Keycloak e o MinIO apenas como configuração: eles não sobem no cluster, então endpoints que
-dependem de autenticação ou de fotos não funcionam ali.
+### Pipeline no GitHub Actions
+
+O workflow `.github/workflows/ci.yml` tem quatro jobs:
+
+- **`build-test`** (PR e `main`): build, testes com cobertura ≥80%, scan da imagem com Trivy.
+- **`validar-manifests`** (PR e `main`): renderiza o kustomize e valida o schema dos objetos com
+  kubeconform. Não publica nada.
+- **`publicar-imagem`** (só no merge em `main`): publica a imagem em `ghcr.io/andersonnunes/veiculos-api`
+  com tag do SHA do commit, e expõe o digest.
+- **`deploy`** (só no merge em `main`): cria um cluster `kind` efêmero, aponta a imagem para o digest,
+  aplica `deploy/k8s`, espera o `rollout` e faz smoke test em `/health`. O cluster é descartado no fim.
+
+O deploy usa o digest, nunca a tag `latest`. O pacote no GHCR é privado por padrão, então o job cria um
+segredo de pull com o `GITHUB_TOKEN` antes de aplicar os manifests.
+
+**Estado:** o workflow está escrito e validado localmente, mas ainda não rodou no GitHub. O que está
+verificado é a renderização do kustomize, o schema dos manifests e o comando de troca de digest.
+
+Os manifests usam o Keycloak e o MinIO apenas como configuração: eles não sobem no cluster de deploy,
+então endpoints que dependem de autenticação ou de fotos não funcionam ali.
