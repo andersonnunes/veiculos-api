@@ -242,8 +242,8 @@ O workflow `.github/workflows/ci.yml` tem quatro jobs:
 O deploy usa o digest, nunca a tag `latest`. O pacote no GHCR é privado por padrão, então o job cria um
 segredo de pull com o `GITHUB_TOKEN` antes de aplicar os manifests.
 
-**Estado:** o workflow está escrito e validado localmente, mas ainda não rodou no GitHub. O que está
-verificado é a renderização do kustomize, o schema dos manifests e o comando de troca de digest.
+**Estado:** o workflow rodou no GitHub com sucesso (execução manual via `workflow_dispatch`): as quatro
+jobs passaram, incluindo a publicação no GHCR e o deploy no `kind` com smoke test em `/health`.
 
 Os manifests usam o Keycloak e o MinIO apenas como configuração: eles não sobem no cluster de deploy,
 então endpoints que dependem de autenticação ou de fotos não funcionam ali.
